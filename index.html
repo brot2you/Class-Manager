@@ -1,0 +1,2443 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Manager — Suivi de classe</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=IBM+Plex+Mono:wght@600;700&display=swap');
+
+:root {
+  --ink: #16161D;
+  --ink-light: #2B2B36;
+  --paper: #FFFBF0;
+  --paper-line: #F3E3B8;
+  --paper-alt: #FFF3D6;
+  --gold: #FFC90E;
+  --brick: #E4000F;
+  --sage: #3CB043;
+  --sky: #049CD8;
+  --text: #16161D;
+  --text-muted: #6B6455;
+  --white: #FFFFFF;
+  --radius: 16px;
+  --shadow: 3px 3px 0 var(--ink);
+  --shadow-lg: 5px 5px 0 var(--ink);
+  --font-display: 'Nunito', -apple-system, sans-serif;
+  --font-body: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--paper);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4 { font-family: var(--font-display); color: var(--ink); margin: 0 0 6px; font-weight: 900; letter-spacing: -0.01em; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.05rem; margin-top: 22px; font-weight: 800; }
+p { margin: 6px 0; }
+.muted { color: var(--text-muted); font-size: 0.92rem; font-weight: 600; }
+.hint { color: var(--text-muted); font-size: 0.85rem; font-style: italic; }
+
+button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+
+/* ---------- Layout général ---------- */
+.topbar {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 14px 22px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  border-bottom: 5px solid var(--gold);
+}
+.topbar .brand { font-family: var(--font-display); font-weight: 900; font-size: 1.3rem; letter-spacing: -0.02em; }
+.topbar .brand small { font-family: var(--font-mono); font-weight: 700; font-size: 0.65rem; color: var(--gold); display: block; letter-spacing: 0.08em; }
+#class-name-display { font-family: var(--font-mono); font-weight: 700; font-size: 0.85rem; color: var(--gold); margin-left: auto; }
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--paper-alt);
+  padding: 10px 14px;
+  overflow-x: auto;
+  border-bottom: 2.5px solid var(--ink);
+}
+.tab-btn {
+  background: var(--tcl, var(--white));
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: 800;
+  color: var(--ink);
+  white-space: nowrap;
+  box-shadow: 2px 2px 0 var(--ink);
+  transition: 0.1s;
+}
+.tab-btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+.tab-btn.active { color: var(--tt, var(--ink)); background: var(--tc, var(--gold)); box-shadow: 2px 2px 0 var(--ink); }
+.tab-btn.tc-blue { --tc: #049CD8; --tcl: #DFF3FC; --tt: #fff; }
+.tab-btn.tc-purple { --tc: #9B5DE5; --tcl: #EFE3FC; --tt: #fff; }
+.tab-btn.tc-orange { --tc: #FF8C1A; --tcl: #FFEBD6; --tt: #16161D; }
+.tab-btn.tc-pink { --tc: #FF5CA8; --tcl: #FFE3F0; --tt: #16161D; }
+.tab-btn.tc-teal { --tc: #00C2D1; --tcl: #DFF9FB; --tt: #16161D; }
+.tab-btn.tc-indigo { --tc: #6C63FF; --tcl: #E7E5FF; --tt: #fff; }
+.tab-btn.tc-green { --tc: #3CB043; --tcl: #E1F5E1; --tt: #fff; }
+.tab-btn.tc-gold { --tc: #FFC90E; --tcl: #FFF6D6; --tt: #16161D; }
+
+main { max-width: 1200px; margin: 0 auto; padding: 22px; }
+.tabpanel { display: none; }
+.tabpanel.active { display: block; }
+
+.panel-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+
+.empty { padding: 40px 20px; text-align: center; color: var(--text-muted); background: var(--paper-alt); border: 2.5px dashed var(--ink); border-radius: var(--radius); font-weight: 700; }
+
+/* ---------- Boutons ---------- */
+.btn {
+  background: var(--white);
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  padding: 9px 16px;
+  cursor: pointer;
+  font-weight: 800;
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  transition: 0.1s;
+}
+.btn:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow-lg); background: var(--paper-alt); }
+.btn:active { transform: translate(2px, 2px); box-shadow: none; }
+.btn-sm { padding: 6px 12px; font-size: 0.85rem; }
+.btn-primary { background: var(--sky); color: #fff; border-color: var(--ink); }
+.btn-primary:hover { background: #06b1f2; }
+.btn-danger { background: var(--brick); color: var(--white); border-color: var(--ink); }
+.btn-danger:hover { background: #ff2436; }
+.row { display: flex; align-items: center; }
+.row.gap { gap: 10px; flex-wrap: wrap; }
+.sep { width: 2px; height: 24px; background: var(--ink); margin: 0 4px; opacity: 0.15; }
+
+input[type=text], input[type=number], input[type=color], select, textarea {
+  border: 2.5px solid var(--ink);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: var(--white);
+  font-weight: 700;
+}
+textarea { width: 100%; resize: vertical; }
+
+.icon-btn {
+  background: var(--white); border: 2px solid var(--ink); border-radius: 8px; cursor: pointer; color: var(--ink); font-size: 0.85rem; padding: 4px 6px; box-shadow: 2px 2px 0 var(--ink); transition: 0.1s;
+}
+.icon-btn:hover { background: var(--brick); color: #fff; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+.icon-btn:active { transform: translate(1px, 1px); box-shadow: none; }
+
+/* ---------- Import box ---------- */
+.importbox { background: var(--paper-alt); border: 2.5px solid var(--ink); border-radius: var(--radius); margin: 14px 0; padding: 4px 14px; }
+.importbox summary { cursor: pointer; font-weight: 800; padding: 10px 0; color: var(--ink); }
+.importbox-body { padding-bottom: 14px; }
+
+/* ---------- Élèves ---------- */
+.student-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.student-card {
+  background: var(--white); border: 2.5px solid var(--ink); border-radius: var(--radius);
+  padding: 12px; display: flex; align-items: center; gap: 10px; cursor: pointer; box-shadow: var(--shadow);
+  position: relative;
+}
+.student-card:hover { border-color: var(--gold); }
+.student-card.is-absent { opacity: 0.5; }
+.student-del { position: absolute; top: 4px; right: 4px; }
+.student-avatar {
+  width: 40px; height: 40px; border-radius: 50%; background: var(--sage); color: var(--white);
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-family: var(--font-mono);
+  flex-shrink: 0; border: 2.5px solid var(--ink); box-shadow: 2px 2px 0 var(--ink);
+}
+.student-avatar.small { width: 28px; height: 28px; font-size: 0.75rem; border-width: 2px; box-shadow: 1px 1px 0 var(--ink); }
+.student-avatar.tiny { width: 22px; height: 22px; font-size: 0.65rem; border-width: 1.5px; box-shadow: none; }
+.student-avatar.large { width: 62px; height: 62px; font-size: 1.4rem; box-shadow: 3px 3px 0 var(--ink); }
+.student-name { font-weight: 700; }
+.student-meta { display: flex; gap: 8px; align-items: center; margin-top: 3px; flex-wrap: wrap; }
+.pts { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); font-weight: 700; }
+.pts-mini { margin-left: auto; font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink); font-weight: 900; background: var(--gold); border: 1.5px solid var(--ink); border-radius: 999px; padding: 1px 8px; }
+.tag-avs { font-size: 0.65rem; background: var(--brick); color: white; padding: 1px 6px; border-radius: 999px; font-weight: 800; border: 1.5px solid var(--ink); }
+.chip { font-size: 0.72rem; padding: 2px 9px; border-radius: 999px; border: 1.5px solid var(--ink); font-weight: 800; }
+
+/* ---------- Fiches ---------- */
+.fiches-layout { display: grid; grid-template-columns: 240px 1fr; gap: 18px; }
+.fiches-list { display: flex; flex-direction: column; gap: 6px; max-height: 78vh; overflow-y: auto; }
+.fiches-list-item {
+  display: flex; align-items: center; gap: 8px; background: var(--white); border: 2.5px solid var(--ink);
+  border-radius: 12px; padding: 8px 10px; cursor: pointer; text-align: left; font-weight: 700; box-shadow: 2px 2px 0 var(--ink); transition: 0.1s;
+}
+.fiches-list-item:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--ink); }
+.fiches-list-item.is-active { background: var(--gold); }
+.fiches-detail { background: var(--white); border: 2.5px solid var(--ink); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+.fiche-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+.absent-toggle { margin-left: auto; font-size: 0.85rem; color: var(--text-muted); }
+.points-panel { display: flex; gap: 22px; align-items: center; background: var(--paper-alt); padding: 12px 16px; border-radius: 8px; flex-wrap: wrap; }
+.point-row { display: flex; align-items: center; gap: 8px; }
+.point-label { font-weight: 600; min-width: 110px; }
+.point-value { font-family: var(--font-mono); font-weight: 800; min-width: 22px; text-align: center; }
+.points-total { margin-left: auto; font-family: var(--font-mono); color: var(--ink); font-weight: 800; }
+.pm-btn {
+  width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--white);
+  cursor: pointer; font-weight: 900; color: var(--ink); line-height: 1; box-shadow: 2px 2px 0 var(--ink); transition: 0.1s;
+}
+.pm-btn:hover { background: var(--gold); transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+.pm-btn:active { transform: translate(1px, 1px); box-shadow: none; }
+
+.stamp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.stamp-btn { display: flex; align-items: center; gap: 8px; border: 2.5px solid var(--ink); background: var(--white); border-radius: 10px; padding: 8px 10px; cursor: pointer; text-align: left; box-shadow: 2px 2px 0 var(--ink); transition: 0.1s; }
+.stamp-btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ink); }
+.stamp-btn.is-active { background: var(--gold); color: var(--ink); }
+.stamp-icon { font-size: 1.2rem; }
+.stamp-name { font-size: 0.82rem; font-weight: 700; }
+.notes-area { min-height: 90px; }
+
+/* ---------- Maisons ---------- */
+.house-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin-bottom: 10px; }
+.house-card { background: var(--white); border: 2.5px solid var(--ink); border-top: 8px solid; border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
+.house-card-head { display: flex; align-items: center; gap: 8px; }
+.house-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; flex-shrink: 0; border: 2px solid var(--ink); }
+.house-points { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 900; color: var(--ink); margin: 6px 0; }
+.house-members { margin-top: 8px; font-size: 0.82rem; color: var(--text-muted); font-weight: 600; }
+.assign-table { display: flex; flex-direction: column; gap: 6px; }
+.assign-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--white); border: 2.5px solid var(--ink); border-radius: 7px; padding: 7px 10px; }
+.house-ranking { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.house-ranking li { display: flex; align-items: center; gap: 8px; background: var(--white); padding: 6px 10px; border-radius: 7px; }
+
+/* ---------- Plan de classe ---------- */
+.plan-toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.board-bar { background: var(--ink); color: var(--paper); text-align: center; padding: 8px; border-radius: 8px; font-family: var(--font-mono); letter-spacing: 0.2em; font-size: 0.8rem; margin: 10px 0; }
+.tables-area { display: flex; flex-wrap: wrap; gap: 16px; padding: 16px; background: var(--paper-alt); border-radius: var(--radius); min-height: 100px; }
+.table-block { background: var(--white); border: 2.5px solid var(--ink); border-radius: 10px; padding: 8px; box-shadow: var(--shadow); }
+.table-controls { display: flex; align-items: center; gap: 6px; justify-content: space-between; font-size: 0.75rem; margin-bottom: 6px; }
+.seats { display: grid; gap: 6px; }
+.seats-single { grid-template-columns: 1fr; }
+.seats-duo { grid-template-columns: 1fr 1fr; }
+.seats-trio { grid-template-columns: 1fr 1fr 1fr; }
+.seats-quad { grid-template-columns: 1fr 1fr; }
+.seats-round4 { grid-template-columns: 1fr 1fr; border-radius: 50%; background: var(--paper-alt); padding: 10px; }
+.seat { border: 2.5px dashed var(--ink); border-radius: 7px; padding: 6px 8px; font-size: 0.78rem; display: flex; align-items: center; gap: 6px; min-width: 100px; }
+.empty-seat { color: var(--text-muted); justify-content: center; }
+.filled-seat { background: var(--sage); color: white; border-style: solid; border-color: var(--ink) !important; cursor: grab; font-weight: 700; }
+.filled-seat.seat-avs { background: var(--brick); }
+.plan-side { display: flex; flex-direction: column; gap: 4px; margin-top: 16px; }
+.chip-list { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip-toggle { border: 2.5px solid var(--ink); background: var(--white); border-radius: 999px; padding: 5px 12px; font-size: 0.8rem; font-weight: 700; cursor: pointer; box-shadow: 2px 2px 0 var(--ink); transition: 0.1s; }
+.chip-toggle:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--ink); }
+.chip-toggle.is-active { background: var(--gold); color: var(--ink); }
+.affinity-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.affinity-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 7px; font-size: 0.85rem; }
+.aff-together { background: #DFF6DF; }
+.aff-apart { background: #FFDFDD; }
+
+/* ---------- Groupes / roue ---------- */
+.groupes-layout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; }
+.groupes-controls { display: flex; flex-direction: column; }
+.groups-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; align-content: start; }
+.group-card { background: var(--white); border: 2.5px solid var(--ink); border-radius: var(--radius); padding: 12px; box-shadow: var(--shadow); }
+.group-card ul { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 4px; }
+.group-card li { padding: 4px 8px; background: var(--paper-alt); border-radius: 6px; font-size: 0.85rem; }
+.wheel-block { text-align: center; margin-top: 10px; }
+.wheel-pointer { font-size: 1.4rem; color: var(--brick); margin-top: -8px; }
+.wheel-winner { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; color: var(--ink); min-height: 34px; margin-top: 6px; }
+#wheel-canvas { max-width: 100%; }
+
+/* ---------- Lien La Digitale ---------- */
+.digitale-block { margin-top: 22px; padding: 14px 16px; background: var(--paper-alt); border: 2.5px solid var(--ink); border-radius: var(--radius); }
+.digitale-block .btn { width: 100%; text-align: left; }
+
+/* ---------- Actions rapides & avatar ---------- */
+.actions-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.actions-col-title { font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px; }
+.action-btn { display: block; width: 100%; text-align: left; border: 2.5px solid var(--ink); border-radius: 10px; padding: 7px 10px; margin-bottom: 6px; cursor: pointer; background: var(--white); font-size: 0.85rem; font-weight: 700; box-shadow: 2px 2px 0 var(--ink); transition: 0.1s; }
+.action-btn:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--ink); }
+.action-btn:active { transform: translate(1px,1px); box-shadow: none; }
+.action-pos { border-left: 6px solid var(--sage); }
+.action-pos:hover { background: #DFF6DF; }
+.action-neg { border-left: 6px solid var(--brick); }
+.action-neg:hover { background: #FFDFDD; }
+.avatar-picker { display: flex; flex-wrap: wrap; gap: 6px; max-width: 480px; }
+.avatar-choice { width: 40px; height: 40px; border-radius: 50%; border: 2.5px solid var(--ink); background: var(--white); font-size: 1.15rem; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 2px 2px 0 var(--ink); transition: 0.1s; }
+.avatar-choice:hover { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--ink); }
+.avatar-choice.is-active { background: var(--gold); box-shadow: 3px 3px 0 var(--ink); }
+.house-action-apply select { flex: 1; min-width: 0; }
+.action-catalog-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.action-catalog-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 7px; font-size: 0.85rem; }
+.action-catalog-item.ac-pos { background: #DFF6DF; }
+.action-catalog-item.ac-neg { background: #FFDFDD; }
+
+/* ---------- Classement ---------- */
+.classement-layout { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 18px; align-items: start; }
+.classement-col { background: var(--white); border: 2.5px solid var(--ink); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+.student-ranking { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.student-ranking li { display: flex; align-items: center; gap: 8px; background: var(--paper-alt); padding: 6px 10px; border-radius: 8px; }
+.rank-num { font-weight: 700; width: 26px; text-align: center; }
+.rank-name { flex: 1; font-weight: 600; font-size: 0.88rem; }
+.rank-pts { font-family: var(--font-mono); color: var(--gold); font-weight: 700; font-size: 0.82rem; }
+#progress-chart { max-width: 100%; margin-top: 8px; }
+@media (max-width: 900px) { .classement-layout { grid-template-columns: 1fr; } }
+
+/* ---------- Écran classe ---------- */
+.ecran-content { background: var(--ink); color: var(--paper); padding: 30px; border-radius: var(--radius); min-height: 60vh; border: 3px solid var(--gold); }
+.ecran-title { font-family: var(--font-display); font-weight: 900; font-size: 2rem; text-align: center; margin-bottom: 20px; color: var(--gold); text-shadow: 2px 2px 0 rgba(0,0,0,0.4); }
+.ecran-columns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+.ecran-col { background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.2); border-radius: 14px; padding: 16px; }
+.ecran-col h3 { color: var(--paper); }
+.ecran-content .group-card, .ecran-content .house-ranking li { background: rgba(255,255,255,0.1); color: var(--paper); border-color: rgba(255,255,255,0.25); box-shadow: none; }
+.ecran-content .wheel-winner { color: var(--gold); }
+:fullscreen .ecran-content { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; border-radius: 0; }
+
+/* ---------- Réglages ---------- */
+.settings-card { background: var(--white); border: 2.5px solid var(--ink); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.danger-card { border-color: var(--brick); border-width: 3px; }
+#class-name-input { width: 100%; max-width: 360px; }
+
+/* ---------- Footer ---------- */
+footer { text-align: center; padding: 22px; color: var(--text-muted); font-size: 0.8rem; }
+
+/* ---------- Impression ---------- */
+.no-print { }
+@media print {
+  body.print-mode .topbar, body.print-mode .tabs, body.print-mode main > *:not(.print-target-wrap), body.print-mode footer,
+  .print-hide { display: none !important; }
+  body.print-mode .print-target-wrap { display: block !important; }
+  .no-print, .no-print-border { display: none !important; }
+  .fiche-print-page { page-break-after: always; padding: 20px; }
+  .stamp-grid-print { display: flex; flex-wrap: wrap; gap: 6px; }
+  .stamp-print { border: 1px solid #ccc; border-radius: 6px; padding: 4px 8px; font-size: 0.8rem; opacity: 0.35; }
+  .stamp-print.earned { opacity: 1; border-color: var(--gold); background: #FFF3B0; }
+  .points-panel-print { margin: 10px 0; }
+}
+@media (max-width: 800px) {
+  .fiches-layout, .groupes-layout { grid-template-columns: 1fr; }
+  .ecran-columns { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="brand">Class Manager<small>BROT2YOU — suivi de classe</small></div>
+    <span id="class-name-display"></span>
+  </div>
+  <nav class="tabs">
+    <button class="tab-btn tc-blue active" data-tab="eleves">🎒 Élèves</button>
+    <button class="tab-btn tc-purple" data-tab="fiches">📋 Fiches individuelles</button>
+    <button class="tab-btn tc-orange" data-tab="maisons">🏠 Maisons</button>
+    <button class="tab-btn tc-pink" data-tab="classement">🏆 Classement</button>
+    <button class="tab-btn tc-teal" data-tab="plan">🪑 Plan de classe</button>
+    <button class="tab-btn tc-indigo" data-tab="groupes">🎲 Groupes &amp; Roue</button>
+    <button class="tab-btn tc-green" data-tab="ecran">📺 Écran classe</button>
+    <button class="tab-btn tc-gold" data-tab="reglages">⚙️ Réglages</button>
+  </nav>
+  <main>
+    <div class="tabpanel active" id="tab-eleves"></div>
+    <div class="tabpanel" id="tab-fiches"></div>
+    <div class="tabpanel" id="tab-maisons"></div>
+    <div class="tabpanel" id="tab-classement"></div>
+    <div class="tabpanel" id="tab-plan"></div>
+    <div class="tabpanel" id="tab-groupes"></div>
+    <div class="tabpanel" id="tab-ecran"></div>
+    <div class="tabpanel" id="tab-reglages"></div>
+  </main>
+  <footer>Class Manager — toutes les données restent sur cet appareil (localStorage), rien n'est transmis à un serveur.</footer>
+</div>
+
+<script type="application/json" id="demo-data">
+{
+  "className": "5e2 (démo)",
+  "premierRangIds": ["d_chloe", "d_nour"],
+  "houses": [
+    { "id": "d_h1", "name": "Équipe Rouge", "color": "#E4000F" },
+    { "id": "d_h2", "name": "Équipe Bleue", "color": "#049CD8" },
+    { "id": "d_h3", "name": "Équipe Verte", "color": "#3CB043" },
+    { "id": "d_h4", "name": "Équipe Jaune", "color": "#FFC90E" }
+  ],
+  "affinities": [
+    { "id": "d_a1", "a": "d_tom", "b": "d_nour", "type": "separer" },
+    { "id": "d_a2", "a": "d_malek", "b": "d_thea", "type": "ensemble" }
+  ],
+  "students": [
+    { "id": "d_chloe", "prenom": "Chloé", "nom": "Martin", "avatar": "🦊", "houseId": "d_h1", "points": { "comportement": 2, "participation": 3 }, "stamps": ["st_part", "st_soin"], "notes": "", "absent": false },
+    { "id": "d_avs_martin", "prenom": "Martin", "nom": "", "houseId": null, "avsFor": "d_chloe", "points": { "comportement": 0, "participation": 0 }, "stamps": [], "notes": "AESH de Chloé", "absent": false },
+    { "id": "d_tom", "prenom": "Tom", "nom": "Lefèvre", "avatar": "🐸", "houseId": "d_h2", "points": { "comportement": -1, "participation": 1 }, "stamps": [], "notes": "", "absent": false },
+    { "id": "d_nour", "prenom": "Nour", "nom": "Haddad", "avatar": "🦉", "houseId": "d_h1", "points": { "comportement": 3, "participation": 2 }, "stamps": ["st_lead"], "notes": "", "absent": false },
+    { "id": "d_malek", "prenom": "Malek", "nom": "Benali", "avatar": "🐼", "houseId": "d_h3", "points": { "comportement": 1, "participation": 1 }, "stamps": ["st_coop"], "notes": "", "absent": false },
+    { "id": "d_thea", "prenom": "Théa", "nom": "Girard", "houseId": "d_h3", "points": { "comportement": 2, "participation": 2 }, "stamps": ["st_crea", "st_coop"], "notes": "", "absent": false },
+    { "id": "d_lucas", "prenom": "Lucas", "nom": "Bernard", "houseId": "d_h2", "points": { "comportement": 0, "participation": 0 }, "stamps": [], "notes": "", "absent": false },
+    { "id": "d_lea", "prenom": "Léa", "nom": "Dupuis", "houseId": "d_h4", "points": { "comportement": 2, "participation": 1 }, "stamps": ["st_prog"], "notes": "", "absent": false },
+    { "id": "d_hugo", "prenom": "Hugo", "nom": "Moreau", "houseId": "d_h4", "points": { "comportement": 1, "participation": 0 }, "stamps": [], "notes": "", "absent": false },
+    { "id": "d_ines", "prenom": "Inès", "nom": "Roux", "houseId": "d_h1", "points": { "comportement": 1, "participation": 3 }, "stamps": ["st_part"], "notes": "", "absent": false },
+    { "id": "d_ethan", "prenom": "Ethan", "nom": "Fontaine", "houseId": "d_h2", "points": { "comportement": -1, "participation": 0 }, "stamps": [], "notes": "", "absent": false },
+    { "id": "d_zoe", "prenom": "Zoé", "nom": "Petit", "houseId": "d_h3", "points": { "comportement": 2, "participation": 2 }, "stamps": ["st_cible"], "notes": "", "absent": false },
+    { "id": "d_gabriel", "prenom": "Gabriel", "nom": "Simon", "houseId": "d_h4", "points": { "comportement": 0, "participation": 1 }, "stamps": [], "notes": "", "absent": false },
+    { "id": "d_camille", "prenom": "Camille", "nom": "Vidal", "houseId": "d_h1", "points": { "comportement": 3, "participation": 1 }, "stamps": ["st_ponct"], "notes": "", "absent": false },
+    { "id": "d_adam", "prenom": "Adam", "nom": "Faure", "houseId": "d_h2", "points": { "comportement": 1, "participation": 2 }, "stamps": [], "notes": "", "absent": false },
+    { "id": "d_sarah", "prenom": "Sarah", "nom": "Blanc", "houseId": "d_h3", "points": { "comportement": 2, "participation": 2 }, "stamps": ["st_soin"], "notes": "", "absent": false }
+  ]
+}
+</script>
+
+<script>
+/* ===================== Class Manager — coeur ===================== */
+var STORAGE_KEY = 'classeActiveData_v1';
+
+function uid(prefix) {
+  return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+}
+
+function shuffle(arr) {
+  var a = arr.slice();
+  var i, j, tmp;
+  for (i = a.length - 1; i > 0; i--) {
+    j = Math.floor(Math.random() * (i + 1));
+    tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) { return ''; }
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+var DEFAULT_STAMPS = [
+  { id: 'st_ponct', name: 'Ponctualité', icon: '⏱️' },
+  { id: 'st_part', name: 'Participation active', icon: '⭐' },
+  { id: 'st_soin', name: 'Travail soigné', icon: '✅' },
+  { id: 'st_coop', name: 'Coopération', icon: '🤝' },
+  { id: 'st_prog', name: 'Progrès notable', icon: '📈' },
+  { id: 'st_crea', name: 'Créativité', icon: '🎨' },
+  { id: 'st_lead', name: 'Esprit d\'équipe', icon: '🧭' },
+  { id: 'st_cible', name: 'Objectif atteint', icon: '🎯' }
+];
+
+var DEFAULT_HOUSES = [
+  { id: 'h_1', name: 'Équipe Rouge', color: '#E4000F' },
+  { id: 'h_2', name: 'Équipe Bleue', color: '#049CD8' },
+  { id: 'h_3', name: 'Équipe Verte', color: '#3CB043' },
+  { id: 'h_4', name: 'Équipe Jaune', color: '#FFC90E' }
+];
+
+var DEFAULT_ACTIONS = [
+  { id: 'ac_1', label: 'Participation', points: 1 },
+  { id: 'ac_2', label: 'Efforts', points: 1 },
+  { id: 'ac_3', label: 'Aide aux camarades', points: 1 },
+  { id: 'ac_4', label: 'Travail soigné', points: 1 },
+  { id: 'ac_5', label: 'Autonomie', points: 1 },
+  { id: 'ac_6', label: 'Travail en équipe', points: 1 },
+  { id: 'ac_7', label: 'Excellent travail', points: 2 },
+  { id: 'ac_8', label: 'Bavardages', points: -1 },
+  { id: 'ac_9', label: 'Manque de matériel', points: -1 },
+  { id: 'ac_10', label: 'Non-respect des consignes', points: -1 },
+  { id: 'ac_11', label: 'Manque de travail', points: -1 },
+  { id: 'ac_12', label: 'Perturbation du cours', points: -2 }
+];
+
+var AVATAR_CHOICES = [
+  '🦊', '🐱', '🐶', '🐼', '🐨', '🦁', '🐯', '🐸', '🐙', '🦉',
+  '🐺', '🐻', '🦄', '🐵', '🦋', '🐧', '🦈', '🐢', '🦖', '🐝',
+  '👧', '👦', '🧑', '👩', '👨', '🧑‍🦱', '🧑‍🦰', '🧑‍🦳', '🧕', '🧑‍🎤'
+];
+
+
+function emptyState() {
+  return {
+    version: 1,
+    className: 'Ma classe',
+    students: [],
+    houses: JSON.parse(JSON.stringify(DEFAULT_HOUSES)),
+    stamps: JSON.parse(JSON.stringify(DEFAULT_STAMPS)),
+    actions: JSON.parse(JSON.stringify(DEFAULT_ACTIONS)),
+    pointsHistory: [],
+    affinities: [],
+    seating: { boardPosition: 'top', tables: [] },
+    groups: { current: [], mode: 'aleatoire' },
+    wheel: { lastWinner: null },
+    settings: { premierRangIds: [] }
+  };
+}
+
+var state = null;
+
+function loadState() {
+  var raw = null;
+  try { raw = localStorage.getItem(STORAGE_KEY); } catch (e) { raw = null; }
+  if (!raw) { state = emptyState(); return state; }
+  try {
+    var parsed = JSON.parse(raw);
+    parsed.students = parsed.students || [];
+    parsed.houses = parsed.houses || JSON.parse(JSON.stringify(DEFAULT_HOUSES));
+    parsed.stamps = parsed.stamps || JSON.parse(JSON.stringify(DEFAULT_STAMPS));
+    parsed.actions = parsed.actions || JSON.parse(JSON.stringify(DEFAULT_ACTIONS));
+    parsed.pointsHistory = parsed.pointsHistory || [];
+    parsed.affinities = parsed.affinities || [];
+    parsed.seating = parsed.seating || { boardPosition: 'top', tables: [] };
+    parsed.groups = parsed.groups || { current: [], mode: 'aleatoire' };
+    parsed.wheel = parsed.wheel || { lastWinner: null };
+    parsed.settings = parsed.settings || { premierRangIds: [] };
+    if (!parsed.settings.premierRangIds) { parsed.settings.premierRangIds = []; }
+    state = parsed;
+  } catch (e2) {
+    state = emptyState();
+  }
+  return state;
+}
+
+var saveTimer = null;
+function saveState() {
+  if (saveTimer) { clearTimeout(saveTimer); }
+  saveTimer = setTimeout(function () {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* quota or private mode */ }
+  }, 150);
+}
+
+function getStudent(id) {
+  var i;
+  for (i = 0; i < state.students.length; i++) {
+    if (state.students[i].id === id) { return state.students[i]; }
+  }
+  return null;
+}
+
+function getHouse(id) {
+  var i;
+  for (i = 0; i < state.houses.length; i++) {
+    if (state.houses[i].id === id) { return state.houses[i]; }
+  }
+  return null;
+}
+
+function totalPoints(student) {
+  return (student.points.comportement || 0) + (student.points.participation || 0) + (student.points.bonus || 0);
+}
+
+function logPointEvent(scope, targetId, delta, label) {
+  state.pointsHistory = state.pointsHistory || [];
+  state.pointsHistory.push({ id: uid('ev'), ts: Date.now(), scope: scope, targetId: targetId, delta: delta, label: label });
+  if (state.pointsHistory.length > 1000) { state.pointsHistory = state.pointsHistory.slice(-1000); }
+}
+/* ===================== Élèves : import, points, tampons, maisons ===================== */
+
+function stripAccents(s) {
+  try { return s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) { return s; }
+}
+
+/* Détecte le séparateur dominant (point-virgule, tabulation, virgule) sur les premières lignes.
+   Couvre les exports CSV Pronote (point-virgule), le collage depuis Excel (tabulation),
+   et le CSV standard (virgule). Retourne null si aucun format tabulaire n'est détecté,
+   auquel cas on retombe sur le format simple "Prénom Nom" une ligne par élève. */
+function detectImportDelimiter(lines) {
+  var candidates = [';', '\t', ','];
+  var sampleLines = lines.slice(0, 5);
+  var i, d, count, best = null, bestCount = 0, j;
+  for (i = 0; i < candidates.length; i++) {
+    d = candidates[i];
+    count = 0;
+    for (j = 0; j < sampleLines.length; j++) { if (sampleLines[j].indexOf(d) !== -1) { count++; } }
+    if (count > bestCount) { bestCount = count; best = d; }
+  }
+  if (best && bestCount >= Math.ceil(sampleLines.length / 2)) { return best; }
+  return null;
+}
+
+function splitImportLine(line, delim) {
+  return line.split(delim).map(function (f) {
+    var t = f.replace(/^\s+|\s+$/g, '');
+    if (t.length >= 2 && t.charAt(0) === '"' && t.charAt(t.length - 1) === '"') { t = t.slice(1, -1).replace(/""/g, '"'); }
+    return t;
+  });
+}
+
+/* Parse le texte importé : liste simple "Prénom Nom" (une ligne par élève),
+   ou export tabulaire (Pronote CSV, collage Excel) avec ou sans ligne d'en-tête
+   contenant les mots "nom" / "prénom". */
+function parseImportText(text) {
+  var rawLines = text.split(/\r?\n/).filter(function (l) { return l.replace(/\s/g, '').length > 0; });
+  if (rawLines.length === 0) { return []; }
+  var delim = detectImportDelimiter(rawLines);
+  var out = [];
+
+  if (delim) {
+    var startIdx = 0, nomIdx = 0, prenomIdx = 1;
+    var headerFields = splitImportLine(rawLines[0], delim).map(function (f) { return stripAccents(f).toLowerCase(); });
+    var foundNom = -1, foundPrenom = -1, k;
+    for (k = 0; k < headerFields.length; k++) {
+      if (headerFields[k] === 'nom' || headerFields[k] === 'nom eleve' || headerFields[k] === 'nom de famille') { foundNom = k; }
+      if (headerFields[k].indexOf('prenom') !== -1) { foundPrenom = k; }
+    }
+    if (foundNom !== -1 || foundPrenom !== -1) {
+      if (foundNom !== -1) { nomIdx = foundNom; }
+      if (foundPrenom !== -1) { prenomIdx = foundPrenom; }
+      startIdx = 1;
+    }
+    var i, fields, nom, prenom;
+    for (i = startIdx; i < rawLines.length; i++) {
+      fields = splitImportLine(rawLines[i], delim);
+      nom = fields[nomIdx] || '';
+      prenom = fields[prenomIdx] || '';
+      if (!prenom && !nom) { continue; }
+      if (!prenom && nom) { prenom = nom; nom = ''; }
+      out.push({ prenom: prenom, nom: nom });
+    }
+  } else {
+    var j, line, parts;
+    for (j = 0; j < rawLines.length; j++) {
+      line = rawLines[j].replace(/^\s+|\s+$/g, '');
+      if (!line) { continue; }
+      parts = line.split(/\s+/);
+      out.push({ prenom: parts[0], nom: parts.length > 1 ? parts.slice(1).join(' ') : '' });
+    }
+  }
+  return out;
+}
+
+function importStudentsFromText(text) {
+  var parsed = parseImportText(text);
+  var added = 0, i;
+  for (i = 0; i < parsed.length; i++) {
+    state.students.push({
+      id: uid('el'),
+      prenom: parsed[i].prenom,
+      nom: parsed[i].nom,
+      houseId: null,
+      points: { comportement: 0, participation: 0 },
+      stamps: [],
+      notes: '',
+      absent: false
+    });
+    added++;
+  }
+  saveState();
+  return added;
+}
+
+function loadDemoClass() {
+  var demoData = document.getElementById('demo-data');
+  if (!demoData) { return; }
+  var demo;
+  try { demo = JSON.parse(demoData.textContent); } catch (e) { return; }
+  var history = generateDemoHistory(demo.students, demo.houses);
+  applyHistoryBonuses(demo.students, demo.houses, history);
+  state.className = demo.className;
+  state.students = demo.students;
+  state.houses = demo.houses;
+  state.affinities = demo.affinities;
+  state.settings.premierRangIds = demo.premierRangIds || [];
+  state.actions = JSON.parse(JSON.stringify(DEFAULT_ACTIONS));
+  state.pointsHistory = history;
+  saveState();
+}
+
+/* Additionne les événements générés dans points.bonus (élèves) / bonus (maisons)
+   pour que le classement et le graphique de progression racontent la même histoire. */
+function applyHistoryBonuses(students, houses, history) {
+  var i, e, s, h;
+  for (i = 0; i < history.length; i++) {
+    e = history[i];
+    if (e.scope === 'eleve') {
+      s = students.filter(function (x) { return x.id === e.targetId; })[0];
+      if (s) { s.points.bonus = (s.points.bonus || 0) + e.delta; }
+    } else if (e.scope === 'maison') {
+      h = houses.filter(function (x) { return x.id === e.targetId; })[0];
+      if (h) { h.bonus = (h.bonus || 0) + e.delta; }
+    }
+  }
+}
+
+/* Génère un historique de points plausible sur les 21 derniers jours,
+   pour que le graphique de progression ne soit pas vide dès le chargement de la démo. */
+function generateDemoHistory(students, houses) {
+  var events = [], now = Date.now(), day = 24 * 60 * 60 * 1000;
+  var d, i, s, h, delta, label;
+  var labels = ['Participation', 'Efforts', 'Excellent travail', 'Bavardages', 'Travail soigné', 'Aide aux camarades'];
+  for (d = 20; d >= 0; d--) {
+    var eventsToday = 2 + Math.floor(Math.random() * 4);
+    for (i = 0; i < eventsToday; i++) {
+      s = students[Math.floor(Math.random() * students.length)];
+      if (s.avsFor) { continue; }
+      delta = Math.random() < 0.75 ? (Math.random() < 0.5 ? 1 : 2) : -1;
+      label = labels[Math.floor(Math.random() * labels.length)];
+      events.push({ id: uid('ev'), ts: now - d * day + i * 1000, scope: 'eleve', targetId: s.id, delta: delta, label: label });
+    }
+    if (Math.random() < 0.4) {
+      h = houses[Math.floor(Math.random() * houses.length)];
+      events.push({ id: uid('ev'), ts: now - d * day + 5000, scope: 'maison', targetId: h.id, delta: 1, label: 'Bonus d\'équipe' });
+    }
+  }
+  return events;
+}
+
+function resetAllData() {
+  state = emptyState();
+  saveState();
+}
+
+/* Nouvelle période : remet à zéro les points (comportement/participation/bonus) de chaque élève
+   et le bonus de chaque maison, en journalisant un événement compensatoire dans l'historique
+   pour que le graphique de progression continue de refléter fidèlement le déroulé de l'année. */
+function resetPeriod() {
+  var i, s, h, total;
+  for (i = 0; i < state.students.length; i++) {
+    s = state.students[i];
+    total = totalPoints(s);
+    if (total !== 0) { logPointEvent('eleve', s.id, -total, 'Nouvelle période'); }
+    s.points.comportement = 0;
+    s.points.participation = 0;
+    s.points.bonus = 0;
+  }
+  for (i = 0; i < state.houses.length; i++) {
+    h = state.houses[i];
+    if (h.bonus) { logPointEvent('maison', h.id, -h.bonus, 'Nouvelle période'); h.bonus = 0; }
+  }
+  saveState();
+}
+
+function addPoint(studentId, category, delta) {
+  var s = getStudent(studentId);
+  if (!s) { return; }
+  s.points[category] = (s.points[category] || 0) + delta;
+  logPointEvent('eleve', studentId, delta, category === 'comportement' ? 'Comportement' : 'Participation');
+  saveState();
+}
+
+function applyActionToStudent(studentId, actionId) {
+  var s = getStudent(studentId);
+  var action = getAction(actionId);
+  if (!s || !action) { return; }
+  s.points.bonus = (s.points.bonus || 0) + action.points;
+  logPointEvent('eleve', studentId, action.points, action.label);
+  saveState();
+}
+
+function applyActionToHouse(houseId, actionId) {
+  var h = getHouse(houseId);
+  var action = getAction(actionId);
+  if (!h || !action) { return; }
+  h.bonus = (h.bonus || 0) + action.points;
+  logPointEvent('maison', houseId, action.points, action.label);
+  saveState();
+}
+
+function getAction(id) {
+  var i;
+  for (i = 0; i < state.actions.length; i++) { if (state.actions[i].id === id) { return state.actions[i]; } }
+  return null;
+}
+
+function addCustomAction(label, points) {
+  var a = { id: uid('ac'), label: label, points: points };
+  state.actions.push(a);
+  saveState();
+  return a;
+}
+
+function deleteAction(actionId) {
+  state.actions = state.actions.filter(function (a) { return a.id !== actionId; });
+  saveState();
+}
+
+function setStudentAvatar(studentId, avatar) {
+  var s = getStudent(studentId);
+  if (!s) { return; }
+  s.avatar = avatar;
+  saveState();
+}
+
+function toggleStamp(studentId, stampId) {
+  var s = getStudent(studentId);
+  if (!s) { return; }
+  var idx = s.stamps.indexOf(stampId);
+  if (idx === -1) { s.stamps.push(stampId); } else { s.stamps.splice(idx, 1); }
+  saveState();
+}
+
+function addCustomStamp(name, icon) {
+  var st = { id: uid('st'), name: name, icon: icon || '🏅' };
+  state.stamps.push(st);
+  saveState();
+  return st;
+}
+
+function setStudentHouse(studentId, houseId) {
+  var s = getStudent(studentId);
+  if (!s) { return; }
+  s.houseId = houseId || null;
+  saveState();
+}
+
+function addHouse(name, color) {
+  var h = { id: uid('h'), name: name, color: color };
+  state.houses.push(h);
+  saveState();
+  return h;
+}
+
+function deleteHouse(houseId) {
+  var i;
+  state.houses = state.houses.filter(function (h) { return h.id !== houseId; });
+  for (i = 0; i < state.students.length; i++) {
+    if (state.students[i].houseId === houseId) { state.students[i].houseId = null; }
+  }
+  saveState();
+}
+
+function housePoints(houseId) {
+  var total = 0, bonus = 0, i;
+  var h = getHouse(houseId);
+  if (h && h.bonus) { bonus = h.bonus; }
+  for (i = 0; i < state.students.length; i++) {
+    if (state.students[i].houseId === houseId) { total += totalPoints(state.students[i]); }
+  }
+  return total + bonus;
+}
+
+function addHouseBonus(houseId, delta) {
+  var h = getHouse(houseId);
+  if (!h) { return; }
+  h.bonus = (h.bonus || 0) + delta;
+  logPointEvent('maison', houseId, delta, 'Bonus manuel');
+  saveState();
+}
+
+function deleteStudent(studentId) {
+  state.students = state.students.filter(function (s) { return s.id !== studentId; });
+  state.affinities = state.affinities.filter(function (a) { return a.a !== studentId && a.b !== studentId; });
+  removeStudentFromSeating(studentId);
+  saveState();
+}
+/* ===================== Affinités, AVS et Plan de classe ===================== */
+
+function addAffinity(studentAId, studentBId, type) {
+  if (studentAId === studentBId) { return; }
+  var exists = state.affinities.some(function (a) {
+    return (a.a === studentAId && a.b === studentBId) || (a.a === studentBId && a.b === studentAId);
+  });
+  if (exists) { return; }
+  state.affinities.push({ id: uid('aff'), a: studentAId, b: studentBId, type: type });
+  saveState();
+}
+
+function removeAffinity(affId) {
+  state.affinities = state.affinities.filter(function (a) { return a.id !== affId; });
+  saveState();
+}
+
+function togglePremierRang(studentId) {
+  var idx = state.settings.premierRangIds.indexOf(studentId);
+  if (idx === -1) { state.settings.premierRangIds.push(studentId); }
+  else { state.settings.premierRangIds.splice(idx, 1); }
+  saveState();
+}
+
+/* --- Tables --- */
+var TABLE_SHAPES = {
+  single: { label: 'Table simple', seats: 1 },
+  duo: { label: 'Table double', seats: 2 },
+  trio: { label: 'Îlot de 3', seats: 3 },
+  quad: { label: 'Îlot de 4', seats: 4 },
+  round4: { label: 'Table ronde (4)', seats: 4 }
+};
+
+function addTable(shape) {
+  var def = TABLE_SHAPES[shape] || TABLE_SHAPES.duo;
+  var seats = [], i;
+  for (i = 0; i < def.seats; i++) { seats.push(null); }
+  var t = { id: uid('tbl'), shape: shape, seats: seats };
+  state.seating.tables.push(t);
+  saveState();
+  return t;
+}
+
+function removeTable(tableId) {
+  state.seating.tables = state.seating.tables.filter(function (t) { return t.id !== tableId; });
+  saveState();
+}
+
+function moveTable(tableId, direction) {
+  var idx = -1, i;
+  for (i = 0; i < state.seating.tables.length; i++) {
+    if (state.seating.tables[i].id === tableId) { idx = i; break; }
+  }
+  if (idx === -1) { return; }
+  var newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= state.seating.tables.length) { return; }
+  var tmp = state.seating.tables[idx];
+  state.seating.tables[idx] = state.seating.tables[newIdx];
+  state.seating.tables[newIdx] = tmp;
+  saveState();
+}
+
+function findSeatOfStudent(studentId) {
+  var t, s;
+  for (t = 0; t < state.seating.tables.length; t++) {
+    for (s = 0; s < state.seating.tables[t].seats.length; s++) {
+      if (state.seating.tables[t].seats[s] === studentId) {
+        return { tableIdx: t, seatIdx: s };
+      }
+    }
+  }
+  return null;
+}
+
+function removeStudentFromSeating(studentId) {
+  var loc = findSeatOfStudent(studentId);
+  if (loc) { state.seating.tables[loc.tableIdx].seats[loc.seatIdx] = null; saveState(); }
+}
+
+function placeStudentAtSeat(studentId, tableId, seatIdx) {
+  var existing = findSeatOfStudent(studentId);
+  if (existing) { state.seating.tables[existing.tableIdx].seats[existing.seatIdx] = null; }
+  var t, table = null;
+  for (t = 0; t < state.seating.tables.length; t++) {
+    if (state.seating.tables[t].id === tableId) { table = state.seating.tables[t]; break; }
+  }
+  if (!table) { return; }
+  var occupant = table.seats[seatIdx];
+  table.seats[seatIdx] = studentId;
+  if (occupant && existing) {
+    state.seating.tables[existing.tableIdx].seats[existing.seatIdx] = occupant;
+  }
+  saveState();
+}
+
+function clearSeating() {
+  var i, j;
+  for (i = 0; i < state.seating.tables.length; i++) {
+    for (j = 0; j < state.seating.tables[i].seats.length; j++) {
+      state.seating.tables[i].seats[j] = null;
+    }
+  }
+  saveState();
+}
+
+function toggleBoardPosition() {
+  state.seating.boardPosition = state.seating.boardPosition === 'top' ? 'bottom' : 'top';
+  saveState();
+}
+
+/* --- Placement intelligent ---
+   Respecte, dans l'ordre de priorité :
+   1. AVS collé à l'élève accompagné (même table)
+   2. Élèves "premier rang" placés sur les tables les plus proches du tableau
+   3. Affinités "ensemble" -> même table
+   4. Affinités "séparer" -> jamais à la même table
+   5. Reste réparti aléatoirement
+   Retourne la liste des contraintes non satisfaites (best-effort). */
+function smartPlacement() {
+  var warnings = [];
+  clearSeating();
+
+  var tables = state.seating.tables;
+  if (tables.length === 0) { warnings.push('Ajoutez au moins une table avant de lancer le placement intelligent.'); return warnings; }
+
+  // Tables ordonnées, les premières = plus proches du tableau
+  var tableOrder = tables.slice();
+
+  function freeSeats(table) {
+    var out = [], i;
+    for (i = 0; i < table.seats.length; i++) { if (table.seats[i] === null) { out.push(i); } }
+    return out;
+  }
+  function tableOccupants(table) {
+    return table.seats.filter(function (x) { return x !== null; });
+  }
+  function seatIsAllowed(table, studentId) {
+    var occ = tableOccupants(table), i, j;
+    for (i = 0; i < occ.length; i++) {
+      for (j = 0; j < state.affinities.length; j++) {
+        var a = state.affinities[j];
+        if (a.type === 'separer') {
+          if ((a.a === studentId && a.b === occ[i]) || (a.b === studentId && a.a === occ[i])) { return false; }
+        }
+      }
+    }
+    return true;
+  }
+  function placeAt(table, studentId) {
+    var fs = freeSeats(table);
+    if (fs.length === 0) { return false; }
+    table.seats[fs[0]] = studentId;
+    return true;
+  }
+  function placedIds() {
+    var out = [], i, j;
+    for (i = 0; i < tables.length; i++) {
+      for (j = 0; j < tables[i].seats.length; j++) { if (tables[i].seats[j]) { out.push(tables[i].seats[j]); } }
+    }
+    return out;
+  }
+
+  // 1. Paires AVS <-> élève accompagné (un élève avec avsFor pointe vers l'élève qu'il accompagne)
+  var avsStudents = state.students.filter(function (s) { return !!s.avsFor; });
+  var i, j, pair;
+  for (i = 0; i < avsStudents.length; i++) {
+    var avs = avsStudents[i];
+    var beneficiaire = getStudent(avs.avsFor);
+    if (!beneficiaire) { continue; }
+    var placedTable = null;
+    for (j = 0; j < tableOrder.length; j++) {
+      if (freeSeats(tableOrder[j]).length >= 2) { placedTable = tableOrder[j]; break; }
+    }
+    if (placedTable) {
+      placeAt(placedTable, beneficiaire.id);
+      placeAt(placedTable, avs.id);
+    } else {
+      warnings.push('Pas de table à 2 places libres pour ' + avs.prenom + ' et ' + beneficiaire.prenom + '.');
+    }
+  }
+
+  // 2. Élèves premier rang : priorité sur les 2 premières tables restantes
+  var premierRang = state.settings.premierRangIds
+    .map(getStudent)
+    .filter(function (s) { return s && placedIds().indexOf(s.id) === -1; });
+  premierRang = shuffle(premierRang);
+  for (i = 0; i < premierRang.length; i++) {
+    var placed = false;
+    for (j = 0; j < tableOrder.length && !placed; j++) {
+      var tb = tableOrder[j];
+      if (freeSeats(tb).length > 0 && seatIsAllowed(tb, premierRang[i].id)) {
+        placed = placeAt(tb, premierRang[i].id);
+      }
+    }
+    if (!placed) { warnings.push('Impossible de placer ' + premierRang[i].prenom + ' au premier rang (contrainte "séparer").'); }
+  }
+
+  // 3. Affinités "ensemble"
+  var togetherPairs = state.affinities.filter(function (a) { return a.type === 'ensemble'; });
+  for (i = 0; i < togetherPairs.length; i++) {
+    var pa = getStudent(togetherPairs[i].a), pb = getStudent(togetherPairs[i].b);
+    if (!pa || !pb) { continue; }
+    var ids = placedIds();
+    var aPlaced = ids.indexOf(pa.id) !== -1, bPlaced = ids.indexOf(pb.id) !== -1;
+    if (aPlaced && bPlaced) { continue; }
+    if (aPlaced && !bPlaced) {
+      var loc = findSeatOfStudent(pa.id);
+      var tbl = tables[loc.tableIdx];
+      if (freeSeats(tbl).length > 0 && seatIsAllowed(tbl, pb.id)) { placeAt(tbl, pb.id); }
+      else { warnings.push(pa.prenom + ' et ' + pb.prenom + ' n\'ont pas pu être réunis (table pleine).'); }
+      continue;
+    }
+    if (!aPlaced && bPlaced) {
+      var loc2 = findSeatOfStudent(pb.id);
+      var tbl2 = tables[loc2.tableIdx];
+      if (freeSeats(tbl2).length > 0 && seatIsAllowed(tbl2, pa.id)) { placeAt(tbl2, pa.id); }
+      else { warnings.push(pa.prenom + ' et ' + pb.prenom + ' n\'ont pas pu être réunis (table pleine).'); }
+      continue;
+    }
+    var found = null;
+    for (j = 0; j < tableOrder.length; j++) {
+      if (freeSeats(tableOrder[j]).length >= 2) { found = tableOrder[j]; break; }
+    }
+    if (found) { placeAt(found, pa.id); placeAt(found, pb.id); }
+    else { warnings.push(pa.prenom + ' et ' + pb.prenom + ' n\'ont pas pu être réunis (pas de table à 2 places).'); }
+  }
+
+  // 4. Reste des élèves, aléatoire, en respectant les séparations
+  var remaining = shuffle(state.students.filter(function (s) {
+    return placedIds().indexOf(s.id) === -1 && !s.avsFor;
+  }));
+  for (i = 0; i < remaining.length; i++) {
+    var candidateTables = shuffle(tables.filter(function (t) { return freeSeats(t).length > 0; }));
+    var done = false;
+    for (j = 0; j < candidateTables.length && !done; j++) {
+      if (seatIsAllowed(candidateTables[j], remaining[i].id)) {
+        done = placeAt(candidateTables[j], remaining[i].id);
+      }
+    }
+    if (!done) {
+      // dernier recours : ignorer la contrainte "séparer" plutôt que laisser l'élève debout
+      var anyTable = tables.filter(function (t) { return freeSeats(t).length > 0; })[0];
+      if (anyTable) {
+        placeAt(anyTable, remaining[i].id);
+        warnings.push(remaining[i].prenom + ' a dû être placé(e) malgré une contrainte "séparer" (plus de place ailleurs).');
+      } else {
+        warnings.push(remaining[i].prenom + ' n\'a pas pu être placé(e) : pas assez de places au total.');
+      }
+    }
+  }
+
+  saveState();
+  return warnings;
+}
+
+function setAvsFor(avsStudentId, beneficiaireId) {
+  var s = getStudent(avsStudentId);
+  if (!s) { return; }
+  s.avsFor = beneficiaireId || null;
+  saveState();
+}
+/* ===================== Groupes aléatoires, roue, Classe Puzzle ===================== */
+
+function activeStudents() {
+  return state.students.filter(function (s) { return !s.absent && !s.avsFor; });
+}
+
+function generateRandomGroups(mode, value) {
+  var pool = shuffle(activeStudents());
+  var groups = [];
+  if (mode === 'taille') {
+    var size = Math.max(1, value | 0);
+    var i;
+    for (i = 0; i < pool.length; i += size) { groups.push(pool.slice(i, i + size).map(function (s) { return s.id; })); }
+  } else {
+    var nb = Math.max(1, value | 0);
+    var g, idx = 0;
+    for (g = 0; g < nb; g++) { groups.push([]); }
+    for (idx = 0; idx < pool.length; idx++) { groups[idx % nb].push(pool[idx].id); }
+  }
+  state.groups.current = groups;
+  state.groups.mode = 'aleatoire';
+  saveState();
+  return groups;
+}
+
+/* Classe Puzzle / Jigsaw : équilibre l'hétérogénéité en répartissant les élèves
+   triés par score total en "serpentin" (snake draft) entre les groupes,
+   pour que chaque groupe ait un mélange de niveaux comparable. */
+function generateJigsawGroups(nbGroups) {
+  nbGroups = Math.max(1, nbGroups | 0);
+  var pool = activeStudents().slice();
+  pool.sort(function (a, b) { return totalPoints(b) - totalPoints(a); });
+  var groups = [], g;
+  for (g = 0; g < nbGroups; g++) { groups.push([]); }
+  var i, row = 0, dir = 1, col = 0;
+  for (i = 0; i < pool.length; i++) {
+    groups[col].push(pool[i].id);
+    col += dir;
+    if (col === nbGroups) { col = nbGroups - 1; dir = -1; }
+    else if (col === -1) { col = 0; dir = 1; }
+  }
+  state.groups.current = groups;
+  state.groups.mode = 'puzzle';
+  saveState();
+  return groups;
+}
+
+function groupsFromExistingGroups(nbSubgroups) {
+  // Répartit les groupes actuels en sous-groupes pour une roue "par équipe"
+  return state.groups.current;
+}
+
+/* --- Roue --- */
+function wheelPool(scope) {
+  if (scope === 'groupes' && state.groups.current.length > 0) {
+    return state.groups.current.map(function (g, i) { return { id: 'grp_' + i, label: 'Groupe ' + (i + 1) }; });
+  }
+  return activeStudents().map(function (s) { return { id: s.id, label: s.prenom + (s.nom ? ' ' + s.nom.charAt(0) + '.' : '') }; });
+}
+
+function pickWheelWinner(pool) {
+  if (pool.length === 0) { return null; }
+  var winner = pool[Math.floor(Math.random() * pool.length)];
+  state.wheel.lastWinner = winner;
+  saveState();
+  return winner;
+}
+/* ===================== Rendu : Élèves & Fiches ===================== */
+
+var uiSelectedStudentId = null;
+
+function studentInitials(s) {
+  var a = s.prenom ? s.prenom.charAt(0) : '?';
+  var b = s.nom ? s.nom.charAt(0) : '';
+  return (a + b).toUpperCase();
+}
+
+function studentAvatarContent(s) {
+  return s.avatar ? s.avatar : studentInitials(s);
+}
+
+function hashStr(str) {
+  var h = 0, i;
+  for (i = 0; i < str.length; i++) { h = ((h << 5) - h) + str.charCodeAt(i); h |= 0; }
+  return Math.abs(h);
+}
+
+function avatarColorFor(s) {
+  return WHEEL_COLORS[hashStr(s.id) % WHEEL_COLORS.length];
+}
+
+function avatarStyleAttr(s) {
+  return ' style="background:' + avatarColorFor(s) + '"';
+}
+
+function houseChipHtml(s) {
+  if (!s.houseId) { return ''; }
+  var h = getHouse(s.houseId);
+  if (!h) { return ''; }
+  return '<span class="chip" style="background:' + h.color + '22;color:' + h.color + ';border-color:' + h.color + '55">' + escapeHtml(h.name) + '</span>';
+}
+
+function renderEleves() {
+  var el = document.getElementById('tab-eleves');
+  if (!el) { return; }
+  var count = state.students.length;
+  var html = '';
+  html += '<div class="panel-head">';
+  html += '<div><h2>Élèves</h2><p class="muted">' + count + ' élève' + (count > 1 ? 's' : '') + ' dans ' + escapeHtml(state.className) + '</p></div>';
+  html += '</div>';
+
+  html += '<details class="importbox"' + (count === 0 ? ' open' : '') + '>';
+  html += '<summary>Importer une liste</summary>';
+  html += '<div class="importbox-body">';
+  html += '<textarea id="import-textarea" rows="6" placeholder="Chloé Martin\nTom Lefevre\nNour Haddad\n..."></textarea>';
+  html += '<div class="row gap">';
+  html += '<button class="btn btn-primary" data-action="do-import">Importer la liste</button>';
+  html += '<button class="btn" data-action="load-demo">Charger la classe démo</button>';
+  html += '</div>';
+  html += '<p class="hint">Trois formats acceptés, détectés automatiquement : une ligne par élève « Prénom Nom » ; un export CSV Pronote (Ressources &gt; Élèves &gt; bouton d\'export, ou client lourd &gt; Ctrl+C) — virgule, point-virgule ou tabulation ; ou un collage direct depuis Excel/Google Sheets. Avec une ligne d\'en-tête (« Nom », « Prénom »), les colonnes sont détectées automatiquement quel que soit leur ordre. Sans en-tête, l\'ordre « Nom puis Prénom » est supposé (ordre par défaut d\'un export Pronote) — ajoutez une ligne d\'en-tête si vos colonnes sont dans l\'autre sens. Aucune donnée n\'est transmise : tout reste sur cet appareil.</p>';
+  html += '</div></details>';
+
+  if (count === 0) {
+    html += '<div class="empty">Importez une liste d\'élèves pour commencer, ou chargez la classe démo ci-dessus.</div>';
+  } else {
+    html += '<div class="student-grid">';
+    var i, s;
+    for (i = 0; i < state.students.length; i++) {
+      s = state.students[i];
+      html += '<div class="student-card' + (s.absent ? ' is-absent' : '') + '" data-open-fiche="' + s.id + '">';
+      html += '<div class="student-avatar"' + avatarStyleAttr(s) + '>' + studentAvatarContent(s) + '</div>';
+      html += '<div class="student-info">';
+      html += '<div class="student-name">' + escapeHtml(s.prenom) + ' ' + escapeHtml(s.nom) + (s.avsFor ? ' <span class="tag-avs">AVS</span>' : '') + '</div>';
+      html += '<div class="student-meta">' + houseChipHtml(s);
+      html += '<span class="pts">🏅 ' + totalPoints(s) + ' pt' + (totalPoints(s) !== 1 ? 's' : '') + '</span>';
+      if (s.stamps.length > 0) { html += '<span class="pts">' + s.stamps.length + ' tampon' + (s.stamps.length > 1 ? 's' : '') + '</span>'; }
+      html += '</div></div>';
+      html += '<button class="icon-btn student-del" title="Retirer cet élève" data-action="delete-student" data-id="' + s.id + '">✕</button>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function stampGridHtml(s) {
+  var html = '<div class="stamp-grid">';
+  var i, st, has;
+  for (i = 0; i < state.stamps.length; i++) {
+    st = state.stamps[i];
+    has = s.stamps.indexOf(st.id) !== -1;
+    html += '<button class="stamp-btn' + (has ? ' is-active' : '') + '" data-action="toggle-stamp" data-id="' + s.id + '" data-stamp="' + st.id + '" title="' + escapeHtml(st.name) + '">';
+    html += '<span class="stamp-icon">' + st.icon + '</span><span class="stamp-name">' + escapeHtml(st.name) + '</span>';
+    html += '</button>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/* target = 'student' -> data-action applyActionToStudent ; 'house' rendu séparément via <select> (voir renderMaisons) */
+function actionButtonsHtml(targetId, targetType) {
+  var positifs = state.actions.filter(function (a) { return a.points > 0; });
+  var negatifs = state.actions.filter(function (a) { return a.points < 0; });
+  var html = '<div class="actions-columns">';
+  html += '<div class="actions-col actions-pos"><div class="actions-col-title">Positif</div>';
+  var i, a;
+  for (i = 0; i < positifs.length; i++) {
+    a = positifs[i];
+    html += '<button class="action-btn action-pos" data-action="apply-action-student" data-id="' + targetId + '" data-action-id="' + a.id + '">' + escapeHtml(a.label) + ' <strong>+' + a.points + '</strong></button>';
+  }
+  html += '</div>';
+  html += '<div class="actions-col actions-neg"><div class="actions-col-title">Négatif</div>';
+  for (i = 0; i < negatifs.length; i++) {
+    a = negatifs[i];
+    html += '<button class="action-btn action-neg" data-action="apply-action-student" data-id="' + targetId + '" data-action-id="' + a.id + '">' + escapeHtml(a.label) + ' <strong>' + a.points + '</strong></button>';
+  }
+  html += '</div></div>';
+  return html;
+}
+
+function avatarPickerHtml(s) {
+  var html = '<div class="avatar-picker">';
+  var i, av;
+  html += '<button class="avatar-choice' + (!s.avatar ? ' is-active' : '') + '" data-action="set-avatar" data-id="' + s.id + '" data-avatar="">' + studentInitials(s) + '</button>';
+  for (i = 0; i < AVATAR_CHOICES.length; i++) {
+    av = AVATAR_CHOICES[i];
+    html += '<button class="avatar-choice' + (s.avatar === av ? ' is-active' : '') + '" data-action="set-avatar" data-id="' + s.id + '" data-avatar="' + av + '">' + av + '</button>';
+  }
+  html += '</div>';
+  return html;
+}
+
+
+function renderFiches() {
+  var el = document.getElementById('tab-fiches');
+  if (!el) { return; }
+  if (state.students.length === 0) {
+    el.innerHTML = '<div class="empty">Importez d\'abord des élèves dans l\'onglet « Élèves ».</div>';
+    return;
+  }
+  if (!uiSelectedStudentId || !getStudent(uiSelectedStudentId)) {
+    uiSelectedStudentId = state.students[0].id;
+  }
+  var s = getStudent(uiSelectedStudentId);
+
+  var html = '<div class="fiches-layout">';
+  html += '<div class="fiches-list">';
+  html += '<div class="row gap" style="margin-bottom:10px">';
+  html += '<button class="btn" data-action="print-all-fiches">🖨️ Imprimer toutes les fiches</button>';
+  html += '</div>';
+  var i, st;
+  for (i = 0; i < state.students.length; i++) {
+    st = state.students[i];
+    html += '<button class="fiches-list-item' + (st.id === uiSelectedStudentId ? ' is-active' : '') + '" data-action="select-fiche" data-id="' + st.id + '">';
+    html += '<span class="student-avatar small"' + avatarStyleAttr(st) + '>' + studentAvatarContent(st) + '</span>';
+    html += '<span>' + escapeHtml(st.prenom) + ' ' + escapeHtml(st.nom) + '</span>';
+    html += '<span class="pts-mini">' + totalPoints(st) + '</span>';
+    html += '</button>';
+  }
+  html += '</div>';
+
+  html += '<div class="fiches-detail" id="fiche-printable">';
+  html += '<div class="fiche-header">';
+  html += '<div class="student-avatar large"' + avatarStyleAttr(s) + '>' + studentAvatarContent(s) + '</div>';
+  html += '<div><h2>' + escapeHtml(s.prenom) + ' ' + escapeHtml(s.nom) + '</h2>' + houseChipHtml(s) + '</div>';
+  html += '<label class="absent-toggle no-print"><input type="checkbox" data-action="toggle-absent" data-id="' + s.id + '"' + (s.absent ? ' checked' : '') + '> Absent(e) aujourd\'hui</label>';
+  html += '</div>';
+
+  html += '<div class="points-panel">';
+  html += pointRowHtml(s, 'comportement', 'Comportement');
+  html += pointRowHtml(s, 'participation', 'Participation');
+  html += '<div class="points-total">Total : <strong>' + totalPoints(s) + ' pts</strong></div>';
+  html += '</div>';
+
+  html += '<h3>Actions rapides</h3>';
+  html += actionButtonsHtml(s.id, 'student');
+
+  html += '<h3>Avatar</h3>';
+  html += avatarPickerHtml(s);
+
+  html += '<h3>Passeport de compétences</h3>';
+  html += stampGridHtml(s);
+
+  html += '<h3>Notes</h3>';
+  html += '<textarea class="notes-area no-print-border" data-action="edit-notes" data-id="' + s.id + '" rows="4" placeholder="Observations, objectifs, rendez-vous parents...">' + escapeHtml(s.notes) + '</textarea>';
+
+  html += '<div class="row gap no-print" style="margin-top:14px">';
+  html += '<button class="btn" data-action="print-fiche">🖨️ Imprimer cette fiche</button>';
+  html += '</div>';
+  html += '</div></div>';
+
+  el.innerHTML = html;
+}
+
+function pointRowHtml(s, cat, label) {
+  var html = '<div class="point-row">';
+  html += '<span class="point-label">' + label + '</span>';
+  html += '<button class="pm-btn" data-action="add-point" data-id="' + s.id + '" data-cat="' + cat + '" data-delta="-1">−</button>';
+  html += '<span class="point-value">' + (s.points[cat] || 0) + '</span>';
+  html += '<button class="pm-btn" data-action="add-point" data-id="' + s.id + '" data-cat="' + cat + '" data-delta="1">+</button>';
+  html += '</div>';
+  return html;
+}
+/* ===================== Rendu : Maisons ===================== */
+
+function actionOptionsHtml() {
+  var html = '<optgroup label="Positif">';
+  var i, a;
+  var positifs = state.actions.filter(function (x) { return x.points > 0; });
+  var negatifs = state.actions.filter(function (x) { return x.points < 0; });
+  for (i = 0; i < positifs.length; i++) { a = positifs[i]; html += '<option value="' + a.id + '">' + escapeHtml(a.label) + ' (+' + a.points + ')</option>'; }
+  html += '</optgroup><optgroup label="Négatif">';
+  for (i = 0; i < negatifs.length; i++) { a = negatifs[i]; html += '<option value="' + a.id + '">' + escapeHtml(a.label) + ' (' + a.points + ')</option>'; }
+  html += '</optgroup>';
+  return html;
+}
+
+function renderMaisons() {
+  var el = document.getElementById('tab-maisons');
+  if (!el) { return; }
+  var html = '';
+  html += '<div class="panel-head"><div><h2>Maisons</h2><p class="muted">Groupes bonifiés, points cumulés des membres + bonus d\'équipe</p></div></div>';
+
+  var houses = state.houses.slice().sort(function (a, b) { return housePoints(b.id) - housePoints(a.id); });
+  html += '<div class="house-grid">';
+  var i, h;
+  for (i = 0; i < houses.length; i++) {
+    h = houses[i];
+    html += '<div class="house-card" style="border-top-color:' + h.color + '">';
+    html += '<div class="house-card-head">';
+    html += '<span class="house-dot" style="background:' + h.color + '"></span>';
+    html += '<strong>' + escapeHtml(h.name) + '</strong>';
+    html += '<button class="icon-btn" title="Supprimer la maison" data-action="delete-house" data-id="' + h.id + '">✕</button>';
+    html += '</div>';
+    html += '<div class="house-points">' + housePoints(h.id) + ' pts</div>';
+    html += '<div class="row gap">';
+    html += '<button class="pm-btn" data-action="house-bonus" data-id="' + h.id + '" data-delta="-1">−</button>';
+    html += '<span class="muted">bonus d\'équipe</span>';
+    html += '<button class="pm-btn" data-action="house-bonus" data-id="' + h.id + '" data-delta="1">+</button>';
+    html += '</div>';
+    html += '<div class="house-action-apply row gap">';
+    html += '<select data-house-action-select="' + h.id + '">' + actionOptionsHtml() + '</select>';
+    html += '<button class="btn btn-sm" data-action="apply-action-house" data-id="' + h.id + '">Appliquer</button>';
+    html += '</div>';
+    var members = state.students.filter(function (s) { return s.houseId === h.id; });
+    html += '<div class="house-members">' + (members.length === 0 ? '<span class="muted">Aucun membre</span>' : members.map(function (m) { return escapeHtml(m.prenom); }).join(', ')) + '</div>';
+    html += '</div>';
+  }
+  html += '</div>';
+
+  html += '<details class="importbox"><summary>Créer une maison</summary><div class="importbox-body">';
+  html += '<div class="row gap">';
+  html += '<input type="text" id="new-house-name" placeholder="Nom de la maison" />';
+  html += '<input type="color" id="new-house-color" value="#4A6FA5" />';
+  html += '<button class="btn btn-primary" data-action="add-house">Ajouter</button>';
+  html += '</div></div></details>';
+
+  if (state.students.length > 0) {
+    html += '<h3>Répartition des élèves</h3>';
+    html += '<div class="assign-table">';
+    var s;
+    for (i = 0; i < state.students.length; i++) {
+      s = state.students[i];
+      html += '<div class="assign-row">';
+      html += '<span>' + escapeHtml(s.prenom) + ' ' + escapeHtml(s.nom) + '</span>';
+      html += '<select data-action="set-house" data-id="' + s.id + '">';
+      html += '<option value="">— aucune maison —</option>';
+      var j;
+      for (j = 0; j < state.houses.length; j++) {
+        html += '<option value="' + state.houses[j].id + '"' + (s.houseId === state.houses[j].id ? ' selected' : '') + '>' + escapeHtml(state.houses[j].name) + '</option>';
+      }
+      html += '</select></div>';
+    }
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+/* ===================== Rendu : Classement ===================== */
+
+var chartScope = 'classe';
+var chartTargetId = null;
+
+function studentRankingHtml() {
+  var ranked = state.students.filter(function (s) { return !s.avsFor; }).sort(function (a, b) { return totalPoints(b) - totalPoints(a); });
+  var medals = ['🥇', '🥈', '🥉'];
+  var html = '<ol class="student-ranking">';
+  var i, s;
+  for (i = 0; i < ranked.length; i++) {
+    s = ranked[i];
+    html += '<li>';
+    html += '<span class="rank-num">' + (medals[i] || (i + 1)) + '</span>';
+    html += '<span class="student-avatar small"' + avatarStyleAttr(s) + '>' + studentAvatarContent(s) + '</span>';
+    html += '<span class="rank-name">' + escapeHtml(s.prenom) + ' ' + escapeHtml(s.nom) + '</span>';
+    html += houseChipHtml(s);
+    html += '<span class="rank-pts">' + totalPoints(s) + ' pts</span>';
+    html += '</li>';
+  }
+  html += '</ol>';
+  return html;
+}
+
+function renderClassement() {
+  var el = document.getElementById('tab-classement');
+  if (!el) { return; }
+  if (state.students.length === 0) {
+    el.innerHTML = '<div class="empty">Importez d\'abord des élèves dans l\'onglet « Élèves ».</div>';
+    return;
+  }
+  var html = '';
+  html += '<div class="panel-head"><div><h2>Classement</h2><p class="muted">Classement des élèves, des maisons, et évolution des points dans le temps</p></div></div>';
+
+  html += '<div class="classement-layout">';
+
+  html += '<div class="classement-col"><h3>Élèves</h3>' + studentRankingHtml() + '</div>';
+  html += '<div class="classement-col"><h3>Maisons</h3>' + ecranHouseRankingHtml() + '</div>';
+
+  html += '<div class="classement-col classement-chart-col">';
+  html += '<h3>Évolution des points</h3>';
+  html += '<div class="row gap">';
+  html += '<select id="chart-scope-select">';
+  html += '<option value="classe"' + (chartScope === 'classe' ? ' selected' : '') + '>Classe entière</option>';
+  html += '<optgroup label="Élève">';
+  var i, s;
+  for (i = 0; i < state.students.length; i++) {
+    s = state.students[i];
+    html += '<option value="eleve:' + s.id + '"' + (chartScope === 'eleve' && chartTargetId === s.id ? ' selected' : '') + '>' + escapeHtml(s.prenom) + ' ' + escapeHtml(s.nom) + '</option>';
+  }
+  html += '</optgroup><optgroup label="Maison">';
+  for (i = 0; i < state.houses.length; i++) {
+    html += '<option value="maison:' + state.houses[i].id + '"' + (chartScope === 'maison' && chartTargetId === state.houses[i].id ? ' selected' : '') + '>' + escapeHtml(state.houses[i].name) + '</option>';
+  }
+  html += '</optgroup></select>';
+  html += '</div>';
+  html += '<canvas id="progress-chart" width="480" height="240"></canvas>';
+  html += '<div id="chart-empty-note" class="muted"></div>';
+  html += '</div>';
+
+  html += '</div>';
+
+  el.innerHTML = html;
+}
+
+function progressSeries() {
+  var events = (state.pointsHistory || []).filter(function (e) {
+    if (chartScope === 'classe') { return e.scope === 'eleve'; }
+    if (chartScope === 'eleve') { return e.scope === 'eleve' && e.targetId === chartTargetId; }
+    if (chartScope === 'maison') { return e.scope === 'maison' && e.targetId === chartTargetId; }
+    return false;
+  }).sort(function (a, b) { return a.ts - b.ts; });
+
+  var byDay = {}, order = [], i, e, dayKey;
+  for (i = 0; i < events.length; i++) {
+    e = events[i];
+    dayKey = new Date(e.ts).toISOString().slice(0, 10);
+    if (order.indexOf(dayKey) === -1) { order.push(dayKey); byDay[dayKey] = 0; }
+    byDay[dayKey] += e.delta;
+  }
+  var running = 0, series = [];
+  for (i = 0; i < order.length; i++) {
+    running += byDay[order[i]];
+    series.push({ day: order[i], value: running });
+  }
+  return series;
+}
+
+function drawProgressChart() {
+  var canvas = document.getElementById('progress-chart');
+  var note = document.getElementById('chart-empty-note');
+  if (!canvas || !canvas.getContext) { return; }
+  var series = progressSeries();
+  var ctx = canvas.getContext('2d');
+  var w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  if (series.length < 2) {
+    if (note) { note.textContent = 'Pas encore assez de données pour tracer une courbe (au moins deux journées avec des points attribués sont nécessaires).'; }
+    if (series.length === 1) {
+      ctx.fillStyle = '#1F3D2E';
+      ctx.font = '13px Inter, sans-serif';
+      ctx.fillText('Total au ' + series[0].day + ' : ' + series[0].value + ' pts', 14, h / 2);
+    }
+    return;
+  }
+  if (note) { note.textContent = ''; }
+
+  var padding = 34;
+  var values = series.map(function (p) { return p.value; });
+  var minV = Math.min(0, Math.min.apply(null, values));
+  var maxV = Math.max.apply(null, values) + 1;
+  var xStep = (w - padding * 2) / (series.length - 1);
+  var yScale = (h - padding * 2) / (maxV - minV);
+
+  function xAt(i) { return padding + i * xStep; }
+  function yAt(v) { return h - padding - (v - minV) * yScale; }
+
+  // axes
+  ctx.strokeStyle = '#E4DCC8';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padding, padding);
+  ctx.lineTo(padding, h - padding);
+  ctx.lineTo(w - padding, h - padding);
+  ctx.stroke();
+
+  // line
+  ctx.strokeStyle = '#B8912F';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  var i;
+  for (i = 0; i < series.length; i++) {
+    if (i === 0) { ctx.moveTo(xAt(i), yAt(series[i].value)); } else { ctx.lineTo(xAt(i), yAt(series[i].value)); }
+  }
+  ctx.stroke();
+
+  // points
+  ctx.fillStyle = '#1F3D2E';
+  for (i = 0; i < series.length; i++) {
+    ctx.beginPath();
+    ctx.arc(xAt(i), yAt(series[i].value), 3.5, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+
+  // labels: first, last, and a middle date
+  ctx.fillStyle = '#6B6455';
+  ctx.font = '11px Inter, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(series[0].day, padding, h - padding + 16);
+  ctx.textAlign = 'right';
+  ctx.fillText(series[series.length - 1].day, w - padding, h - padding + 16);
+  ctx.textAlign = 'left';
+  ctx.fillText(String(Math.round(maxV)), 4, padding + 4);
+  ctx.fillText(String(Math.round(minV)), 4, h - padding);
+}
+
+/* ===================== Rendu : Plan de classe ===================== */
+
+function tableSeatCount(shape) { return (TABLE_SHAPES[shape] || TABLE_SHAPES.duo).seats; }
+
+function seatChipHtml(studentId, tableId, seatIdx) {
+  if (!studentId) {
+    return '<div class="seat empty-seat" data-drop-table="' + tableId + '" data-drop-seat="' + seatIdx + '">+ place libre</div>';
+  }
+  var s = getStudent(studentId);
+  if (!s) { return '<div class="seat empty-seat" data-drop-table="' + tableId + '" data-drop-seat="' + seatIdx + '">?</div>'; }
+  var isAvs = !!s.avsFor;
+  return '<div class="seat filled-seat' + (isAvs ? ' seat-avs' : '') + '" draggable="true" data-drag-student="' + s.id + '" data-drop-table="' + tableId + '" data-drop-seat="' + seatIdx + '" title="' + escapeHtml(s.prenom + ' ' + s.nom) + '">' +
+    '<span class="student-avatar tiny"' + avatarStyleAttr(s) + '>' + studentAvatarContent(s) + '</span><span>' + escapeHtml(s.prenom) + (isAvs ? ' <em>(AVS)</em>' : '') + '</span></div>';
+}
+
+function renderPlan() {
+  var el = document.getElementById('tab-plan');
+  if (!el) { return; }
+  if (state.students.length === 0) {
+    el.innerHTML = '<div class="empty">Importez d\'abord des élèves dans l\'onglet « Élèves ».</div>';
+    return;
+  }
+  var html = '';
+  html += '<div class="panel-head"><div><h2>Plan de classe</h2><p class="muted">Glissez-déposez les élèves sur les places, ou laissez l\'algorithme faire le travail</p></div></div>';
+
+  html += '<div class="plan-toolbar no-print">';
+  html += '<button class="btn" data-action="toggle-board">Tableau : ' + (state.seating.boardPosition === 'top' ? 'en haut ⬆️' : 'en bas ⬇️') + '</button>';
+  html += '<span class="sep"></span>';
+  var shapeKey;
+  for (shapeKey in TABLE_SHAPES) {
+    html += '<button class="btn btn-sm" data-action="add-table" data-shape="' + shapeKey + '">+ ' + TABLE_SHAPES[shapeKey].label + '</button>';
+  }
+  html += '<span class="sep"></span>';
+  html += '<button class="btn btn-primary" data-action="smart-placement">✨ Placement intelligent</button>';
+  html += '<button class="btn" data-action="clear-seating">Vider le plan</button>';
+  html += '<button class="btn" data-action="print-plan">🖨️ Imprimer</button>';
+  html += '</div>';
+
+  if (state.seating.boardPosition === 'top') { html += '<div class="board-bar">TABLEAU</div>'; }
+
+  html += '<div class="tables-area" id="plan-printable">';
+  if (state.seating.tables.length === 0) {
+    html += '<div class="empty">Ajoutez des tables ci-dessus pour construire le plan.</div>';
+  } else {
+    var i, j, t;
+    for (i = 0; i < state.seating.tables.length; i++) {
+      t = state.seating.tables[i];
+      html += '<div class="table-block shape-' + t.shape + '">';
+      html += '<div class="table-controls no-print">';
+      html += '<button class="icon-btn" data-action="move-table" data-id="' + t.id + '" data-dir="-1" title="Reculer">↑</button>';
+      html += '<span class="muted">' + TABLE_SHAPES[t.shape].label + '</span>';
+      html += '<button class="icon-btn" data-action="move-table" data-id="' + t.id + '" data-dir="1" title="Avancer">↓</button>';
+      html += '<button class="icon-btn" data-action="remove-table" data-id="' + t.id + '" title="Supprimer">✕</button>';
+      html += '</div>';
+      html += '<div class="seats seats-' + t.shape + '">';
+      for (j = 0; j < t.seats.length; j++) { html += seatChipHtml(t.seats[j], t.id, j); }
+      html += '</div></div>';
+    }
+  }
+  html += '</div>';
+
+  if (state.seating.boardPosition === 'bottom') { html += '<div class="board-bar">TABLEAU</div>'; }
+
+  html += '<div class="plan-side no-print">';
+
+  html += '<details class="importbox"><summary>Premier rang (priorité de placement)</summary><div class="importbox-body">';
+  html += '<div class="chip-list">';
+  var s;
+  for (i = 0; i < state.students.length; i++) {
+    s = state.students[i];
+    var active = state.settings.premierRangIds.indexOf(s.id) !== -1;
+    html += '<button class="chip-toggle' + (active ? ' is-active' : '') + '" data-action="toggle-premier-rang" data-id="' + s.id + '">' + escapeHtml(s.prenom) + '</button>';
+  }
+  html += '</div></div></details>';
+
+  html += '<details class="importbox"><summary>AVS / AESH</summary><div class="importbox-body">';
+  html += '<p class="hint">Assignez un élève « AVS » comme accompagnant : il sera automatiquement placé à côté de l\'élève suivi.</p>';
+  for (i = 0; i < state.students.length; i++) {
+    s = state.students[i];
+    html += '<div class="assign-row"><span>' + escapeHtml(s.prenom) + '</span>';
+    html += '<select data-action="set-avs-for" data-id="' + s.id + '">';
+    html += '<option value="">— n\'est pas AVS —</option>';
+    for (j = 0; j < state.students.length; j++) {
+      if (state.students[j].id === s.id) { continue; }
+      html += '<option value="' + state.students[j].id + '"' + (s.avsFor === state.students[j].id ? ' selected' : '') + '>AVS de ' + escapeHtml(state.students[j].prenom) + '</option>';
+    }
+    html += '</select></div>';
+  }
+  html += '</div></details>';
+
+  html += '<details class="importbox"><summary>Affinités (rapprocher / séparer)</summary><div class="importbox-body">';
+  html += '<div class="row gap">';
+  html += '<select id="aff-a">' + studentOptionsHtml() + '</select>';
+  html += '<select id="aff-b">' + studentOptionsHtml() + '</select>';
+  html += '<select id="aff-type"><option value="ensemble">à réunir</option><option value="separer">à séparer</option></select>';
+  html += '<button class="btn btn-primary" data-action="add-affinity">Ajouter</button>';
+  html += '</div>';
+  html += '<div class="affinity-list">';
+  for (i = 0; i < state.affinities.length; i++) {
+    var a = state.affinities[i];
+    var sa = getStudent(a.a), sb = getStudent(a.b);
+    if (!sa || !sb) { continue; }
+    html += '<div class="affinity-item ' + (a.type === 'ensemble' ? 'aff-together' : 'aff-apart') + '">';
+    html += (a.type === 'ensemble' ? '🤝 ' : '↔️ ') + escapeHtml(sa.prenom) + ' — ' + escapeHtml(sb.prenom);
+    html += '<button class="icon-btn" data-action="remove-affinity" data-id="' + a.id + '">✕</button></div>';
+  }
+  html += '</div></div></details>';
+
+  html += '</div>';
+
+  el.innerHTML = html;
+}
+
+function studentOptionsHtml() {
+  var html = '', i, s;
+  for (i = 0; i < state.students.length; i++) {
+    s = state.students[i];
+    html += '<option value="' + s.id + '">' + escapeHtml(s.prenom) + ' ' + escapeHtml(s.nom) + '</option>';
+  }
+  return html;
+}
+/* ===================== Rendu : Groupes & Roue ===================== */
+
+function houseColorFor(studentId) {
+  var s = getStudent(studentId);
+  if (!s || !s.houseId) { return null; }
+  var h = getHouse(s.houseId);
+  return h ? h.color : null;
+}
+
+function groupsHtml(readOnly) {
+  if (state.groups.current.length === 0) {
+    return '<div class="empty">Aucun groupe généré pour le moment.</div>';
+  }
+  var html = '<div class="groups-grid">';
+  var i, j, g, sid, s, col;
+  for (i = 0; i < state.groups.current.length; i++) {
+    g = state.groups.current[i];
+    html += '<div class="group-card"><h4>Groupe ' + (i + 1) + '</h4><ul>';
+    for (j = 0; j < g.length; j++) {
+      sid = g[j]; s = getStudent(sid);
+      if (!s) { continue; }
+      col = houseColorFor(sid);
+      html += '<li' + (col ? ' style="border-left:4px solid ' + col + '"' : '') + '>' + escapeHtml(s.prenom) + ' ' + escapeHtml(s.nom) + '</li>';
+    }
+    html += '</ul></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+/* ===================== Lien avec La Digitale (Digiscreen / Digitools) =====================
+   La Digitale ne propose pas d'import par URL : le pont consiste donc à préparer
+   la liste au bon format (séparée par des virgules, 24 éléments max pour la Roue)
+   et à la copier dans le presse-papiers, puis à ouvrir le bon outil dans un nouvel onglet. */
+var DIGITALE_URLS = {
+  roue: 'https://ladigitale.dev/digitools/roue/',
+  groupes: 'https://ladigitale.dev/digitools/groupes/',
+  digiscreen: 'https://ladigitale.dev/digiscreen/'
+};
+
+function digitaleListFor(scope) {
+  var names;
+  if (scope === 'groupes' && state.groups.current.length > 0) {
+    names = state.groups.current.map(function (g, i) { return 'Groupe ' + (i + 1); });
+  } else {
+    names = activeStudents().map(function (s) { return s.prenom; });
+  }
+  return names;
+}
+
+function copyToClipboard(text, onDone) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () { onDone(true); }, function () { onDone(false, text); });
+  } else {
+    onDone(false, text);
+  }
+}
+
+function copyForDigitale(scope, targetTool) {
+  var names = digitaleListFor(scope);
+  var truncated = false;
+  if (targetTool === 'roue' && names.length > 24) { names = names.slice(0, 24); truncated = true; }
+  var text = names.join(', ');
+  copyToClipboard(text, function (ok, fallbackText) {
+    if (ok) {
+      alert('Liste copiée (' + names.length + ' éléments)' + (truncated ? ' — limitée à 24 pour la Roue' : '') + '.\nCollez-la dans le champ de l\'outil La Digitale qui va s\'ouvrir.');
+    } else {
+      prompt('Copie automatique indisponible. Copiez ce texte manuellement (Ctrl+C) :', fallbackText);
+    }
+    window.open(DIGITALE_URLS[targetTool], '_blank');
+  });
+}
+
+function digitaleLinkBlockHtml() {
+  var html = '<div class="digitale-block">';
+  html += '<h3>Lien avec La Digitale</h3>';
+  html += '<p class="hint">Class Manager ne remplace pas Digiscreen : il prépare votre liste au bon format et l\'envoie vers l\'outil La Digitale correspondant (copie presse-papiers + ouverture dans un nouvel onglet, à coller dans le champ prévu).</p>';
+  html += '<div class="row gap">';
+  html += '<button class="btn" data-action="digitale-send" data-scope="eleves" data-tool="roue">🎡 Envoyer les élèves vers la Roue (Digitools)</button>';
+  html += '</div><div class="row gap">';
+  html += '<button class="btn" data-action="digitale-send" data-scope="groupes" data-tool="roue">🎡 Envoyer les groupes vers la Roue (Digitools)</button>';
+  html += '</div><div class="row gap">';
+  html += '<button class="btn" data-action="digitale-send" data-scope="eleves" data-tool="groupes">👥 Envoyer les élèves vers Groupes (Digitools)</button>';
+  html += '</div><div class="row gap">';
+  html += '<button class="btn" data-action="open-digitale" data-tool="digiscreen">🖥️ Ouvrir Digiscreen ↗</button>';
+  html += '</div>';
+  html += '</div>';
+  return html;
+}
+
+function renderGroupes() {
+  var el = document.getElementById('tab-groupes');
+  if (!el) { return; }
+  if (state.students.length === 0) {
+    el.innerHTML = '<div class="empty">Importez d\'abord des élèves dans l\'onglet « Élèves ».</div>';
+    return;
+  }
+  var html = '';
+  html += '<div class="panel-head"><div><h2>Groupes & Roue</h2><p class="muted">Répartition aléatoire, Classe Puzzle (hétérogénéité) et roue de tirage</p></div></div>';
+
+  html += '<div class="groupes-layout">';
+  html += '<div class="groupes-controls">';
+
+  html += '<h3>Groupes aléatoires</h3>';
+  html += '<div class="row gap">';
+  html += '<label>Taille des groupes <input type="number" id="grp-size" min="2" value="4" style="width:64px" /></label>';
+  html += '<button class="btn btn-primary" data-action="gen-groups-taille">Générer</button>';
+  html += '</div>';
+  html += '<div class="row gap">';
+  html += '<label>Nombre de groupes <input type="number" id="grp-nb" min="2" value="5" style="width:64px" /></label>';
+  html += '<button class="btn btn-primary" data-action="gen-groups-nb">Générer</button>';
+  html += '</div>';
+
+  html += '<h3>Classe Puzzle (Jigsaw)</h3>';
+  html += '<p class="hint">Répartit les élèves pour équilibrer l\'hétérogénéité de chaque groupe (points cumulés).</p>';
+  html += '<div class="row gap">';
+  html += '<label>Nombre de groupes <input type="number" id="jig-nb" min="2" value="5" style="width:64px" /></label>';
+  html += '<button class="btn btn-primary" data-action="gen-jigsaw">Générer</button>';
+  html += '</div>';
+
+  html += '<h3>Roue de tirage</h3>';
+  html += '<div class="row gap">';
+  html += '<label><input type="radio" name="wheel-scope" value="eleves" checked /> Élèves</label>';
+  html += '<label><input type="radio" name="wheel-scope" value="groupes" /> Groupes actuels</label>';
+  html += '</div>';
+  html += '<div id="wheel-wrap">' + wheelWidgetHtml() + '</div>';
+
+  html += digitaleLinkBlockHtml();
+
+  html += '</div>';
+
+  html += '<div class="groupes-display" id="groups-printable">' + groupsHtml() + '</div>';
+  html += '</div>';
+
+  el.innerHTML = html;
+}
+
+function wheelWidgetHtml() {
+  var html = '<div class="wheel-block">';
+  html += '<canvas id="wheel-canvas" width="280" height="280"></canvas>';
+  html += '<div class="wheel-pointer">▼</div>';
+  html += '<div class="row gap" style="justify-content:center;margin-top:10px">';
+  html += '<button class="btn btn-primary" data-action="spin-wheel">🎡 Faire tourner</button>';
+  html += '</div>';
+  html += '<div id="wheel-winner" class="wheel-winner"></div>';
+  html += '</div>';
+  return html;
+}
+
+/* ===================== Rendu : Écran classe ===================== */
+
+function renderEcran() {
+  var el = document.getElementById('tab-ecran');
+  if (!el) { return; }
+  var html = '';
+  html += '<div class="panel-head no-print"><div><h2>Écran classe</h2><p class="muted">Vue grand écran : branchez au vidéoprojecteur et passez en plein écran</p></div>';
+  html += '<button class="btn btn-primary" data-action="toggle-fullscreen">⛶ Plein écran</button></div>';
+
+  html += '<div class="ecran-content" id="ecran-content">';
+  html += '<div class="ecran-title">' + escapeHtml(state.className) + '</div>';
+  html += '<div class="ecran-columns">';
+  html += '<div class="ecran-col"><h3>Groupes</h3>' + groupsHtml() + '</div>';
+  html += '<div class="ecran-col ecran-wheel">' + wheelWidgetHtml() + '</div>';
+  html += '<div class="ecran-col"><h3>Classement maisons</h3>' + ecranHouseRankingHtml() + '</div>';
+  html += '</div></div>';
+  html += '<div class="no-print">' + digitaleLinkBlockHtml() + '</div>';
+
+  el.innerHTML = html;
+}
+
+function ecranHouseRankingHtml() {
+  if (state.houses.length === 0) { return '<div class="muted">Aucune maison créée</div>'; }
+  var houses = state.houses.slice().sort(function (a, b) { return housePoints(b.id) - housePoints(a.id); });
+  var html = '<ol class="house-ranking">';
+  var i;
+  for (i = 0; i < houses.length; i++) {
+    html += '<li><span class="house-dot" style="background:' + houses[i].color + '"></span>' + escapeHtml(houses[i].name) + ' <strong>' + housePoints(houses[i].id) + ' pts</strong></li>';
+  }
+  html += '</ol>';
+  return html;
+}
+/* ===================== Réglages, Export/Import, Impression ===================== */
+
+function renderReglages() {
+  var el = document.getElementById('tab-reglages');
+  if (!el) { return; }
+  var html = '';
+  html += '<div class="panel-head"><div><h2>Réglages</h2><p class="muted">Sauvegarde, synchro entre appareils, remise à zéro</p></div></div>';
+
+  html += '<div class="settings-card">';
+  html += '<h3>Nom de la classe</h3>';
+  html += '<input type="text" id="class-name-input" value="' + escapeHtml(state.className) + '" />';
+  html += '</div>';
+
+  html += '<div class="settings-card">';
+  html += '<h3>Synchroniser entre appareils</h3>';
+  html += '<p class="hint">Class Manager ne stocke rien sur un serveur : pour retrouver votre classe sur un autre ordinateur (ou après avoir vidé le cache), exportez un fichier de sauvegarde puis importez-le sur l\'autre appareil.</p>';
+  html += '<div class="row gap">';
+  html += '<button class="btn btn-primary" data-action="export-json">⬇️ Exporter la sauvegarde (.json)</button>';
+  html += '<label class="btn" for="import-json-input">⬆️ Importer une sauvegarde</label>';
+  html += '<input type="file" id="import-json-input" accept="application/json" style="display:none" />';
+  html += '</div>';
+  html += '</div>';
+
+  html += '<div class="settings-card">';
+  html += '<h3>Tampons / compétences</h3>';
+  html += '<div class="row gap">';
+  html += '<input type="text" id="new-stamp-name" placeholder="Nom du tampon" />';
+  html += '<input type="text" id="new-stamp-icon" placeholder="Emoji" style="width:70px" maxlength="4" />';
+  html += '<button class="btn btn-primary" data-action="add-stamp">Ajouter</button>';
+  html += '</div>';
+  html += '<div class="chip-list" style="margin-top:10px">';
+  var i;
+  for (i = 0; i < state.stamps.length; i++) {
+    html += '<span class="chip">' + state.stamps[i].icon + ' ' + escapeHtml(state.stamps[i].name) + '</span>';
+  }
+  html += '</div></div>';
+
+  html += '<div class="settings-card">';
+  html += '<h3>Catalogue d\'actions à points</h3>';
+  html += '<p class="hint">Utilisées dans « Actions rapides » (fiche élève) et pour bonifier directement une maison. Modifiez ou complétez cette liste selon vos besoins.</p>';
+  html += '<div class="row gap">';
+  html += '<input type="text" id="new-action-label" placeholder="Nom de l\'action" />';
+  html += '<input type="number" id="new-action-points" placeholder="Points" min="1" value="1" style="width:70px" />';
+  html += '<select id="new-action-type"><option value="positif">Positif</option><option value="negatif">Négatif</option></select>';
+  html += '<button class="btn btn-primary" data-action="add-action">Ajouter</button>';
+  html += '</div>';
+  html += '<div class="action-catalog-list">';
+  for (i = 0; i < state.actions.length; i++) {
+    var a = state.actions[i];
+    html += '<div class="action-catalog-item ' + (a.points > 0 ? 'ac-pos' : 'ac-neg') + '">';
+    html += escapeHtml(a.label) + ' <strong>' + (a.points > 0 ? '+' : '') + a.points + '</strong>';
+    html += '<button class="icon-btn" data-action="delete-action" data-id="' + a.id + '">✕</button></div>';
+  }
+  html += '</div></div>';
+
+  html += '<div class="settings-card">';
+  html += '<h3>Nouvelle période</h3>';
+  html += '<p class="hint">Remet à zéro les points (comportement, participation, bonus) de tous les élèves et le bonus de toutes les maisons, pour démarrer un nouveau trimestre ou une nouvelle période. Élèves, maisons, tampons, notes, plan de classe et groupes sont conservés — seuls les compteurs de points repartent à zéro. Le graphique de progression garde tout l\'historique.</p>';
+  html += '<button class="btn btn-primary" data-action="reset-period">🔄 Réinitialiser les points de la période</button>';
+  html += '</div>';
+
+  html += '<div class="settings-card danger-card">';
+  html += '<h3>Réinitialiser</h3>';
+  html += '<p class="hint">Supprime tous les élèves, maisons, plans et données locales. Irréversible.</p>';
+  html += '<button class="btn btn-danger" data-action="reset-data">Tout réinitialiser</button>';
+  html += '</div>';
+
+  el.innerHTML = html;
+}
+
+function exportJson() {
+  var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  var safeName = state.className.replace(/[^a-z0-9\-_]+/gi, '-').toLowerCase();
+  a.href = url;
+  a.download = 'class-manager-' + (safeName || 'export') + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+
+function importJsonFile(file, cb) {
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      var parsed = JSON.parse(e.target.result);
+      if (!parsed || typeof parsed !== 'object' || !parsed.hasOwnProperty('students')) {
+        cb(false, 'Fichier invalide : ce n\'est pas une sauvegarde Class Manager.');
+        return;
+      }
+      state = parsed;
+      state.houses = state.houses || JSON.parse(JSON.stringify(DEFAULT_HOUSES));
+      state.stamps = state.stamps || JSON.parse(JSON.stringify(DEFAULT_STAMPS));
+      state.affinities = state.affinities || [];
+      state.seating = state.seating || { boardPosition: 'top', tables: [] };
+      state.groups = state.groups || { current: [], mode: 'aleatoire' };
+      state.wheel = state.wheel || { lastWinner: null };
+      state.settings = state.settings || { premierRangIds: [] };
+      saveState();
+      cb(true, null);
+    } catch (err) {
+      cb(false, 'Fichier illisible : ' + err.message);
+    }
+  };
+  reader.onerror = function () { cb(false, 'Impossible de lire le fichier.'); };
+  reader.readAsText(file);
+}
+
+/* --- Impression ciblée : on isole temporairement le bloc à imprimer --- */
+function printOnly(elementId) {
+  var el = document.getElementById(elementId);
+  if (!el) { window.print(); return; }
+  document.body.classList.add('print-mode');
+  var siblings = document.querySelectorAll('body > *:not(.print-target-wrap)');
+  var wrap = document.createElement('div');
+  wrap.className = 'print-target-wrap';
+  wrap.innerHTML = el.outerHTML;
+  document.body.appendChild(wrap);
+  var i;
+  for (i = 0; i < siblings.length; i++) { siblings[i].classList.add('print-hide'); }
+  window.print();
+  setTimeout(function () {
+    document.body.removeChild(wrap);
+    for (i = 0; i < siblings.length; i++) { siblings[i].classList.remove('print-hide'); }
+    document.body.classList.remove('print-mode');
+  }, 300);
+}
+
+function printAllFiches() {
+  var wrap = document.createElement('div');
+  wrap.className = 'print-target-wrap all-fiches-print';
+  var i, s, prevSelected = uiSelectedStudentId;
+  var html = '';
+  for (i = 0; i < state.students.length; i++) {
+    s = state.students[i];
+    html += '<div class="fiche-print-page">';
+    html += '<div class="fiche-header"><div class="student-avatar large"' + avatarStyleAttr(s) + '>' + studentAvatarContent(s) + '</div>';
+    html += '<div><h2>' + escapeHtml(s.prenom) + ' ' + escapeHtml(s.nom) + '</h2>' + houseChipHtml(s) + '</div></div>';
+    html += '<div class="points-panel-print">Comportement : <strong>' + (s.points.comportement || 0) + '</strong> &nbsp; Participation : <strong>' + (s.points.participation || 0) + '</strong> &nbsp; Total : <strong>' + totalPoints(s) + '</strong></div>';
+    html += '<h3>Passeport de compétences</h3><div class="stamp-grid-print">';
+    var j, st, has;
+    for (j = 0; j < state.stamps.length; j++) {
+      st = state.stamps[j]; has = s.stamps.indexOf(st.id) !== -1;
+      html += '<span class="stamp-print' + (has ? ' earned' : '') + '">' + st.icon + ' ' + escapeHtml(st.name) + '</span>';
+    }
+    html += '</div>';
+    if (s.notes) { html += '<h3>Notes</h3><p>' + escapeHtml(s.notes) + '</p>'; }
+    html += '</div>';
+  }
+  wrap.innerHTML = html;
+  document.body.appendChild(wrap);
+  var siblings = document.querySelectorAll('body > *:not(.print-target-wrap)');
+  var k;
+  for (k = 0; k < siblings.length; k++) { siblings[k].classList.add('print-hide'); }
+  document.body.classList.add('print-mode');
+  window.print();
+  setTimeout(function () {
+    document.body.removeChild(wrap);
+    for (k = 0; k < siblings.length; k++) { siblings[k].classList.remove('print-hide'); }
+    document.body.classList.remove('print-mode');
+  }, 300);
+}
+/* ===================== App principal : onglets, événements, roue, init ===================== */
+
+var TABS = ['eleves', 'fiches', 'maisons', 'classement', 'plan', 'groupes', 'ecran', 'reglages'];
+var currentTab = 'eleves';
+
+function renderActiveTab() {
+  if (currentTab === 'eleves') { renderEleves(); }
+  else if (currentTab === 'fiches') { renderFiches(); }
+  else if (currentTab === 'maisons') { renderMaisons(); }
+  else if (currentTab === 'classement') { renderClassement(); drawProgressChart(); }
+  else if (currentTab === 'plan') { renderPlan(); }
+  else if (currentTab === 'groupes') { renderGroupes(); drawWheelCanvas('wheel-canvas'); }
+  else if (currentTab === 'ecran') { renderEcran(); drawWheelCanvas('wheel-canvas'); }
+  else if (currentTab === 'reglages') { renderReglages(); }
+  renderClassNameHeader();
+}
+
+function switchTab(tab) {
+  if (TABS.indexOf(tab) === -1) { return; }
+  currentTab = tab;
+  var i, panels = document.querySelectorAll('.tabpanel');
+  for (i = 0; i < panels.length; i++) {
+    panels[i].classList.toggle('active', panels[i].id === 'tab-' + tab);
+  }
+  var buttons = document.querySelectorAll('.tab-btn');
+  for (i = 0; i < buttons.length; i++) {
+    buttons[i].classList.toggle('active', buttons[i].getAttribute('data-tab') === tab);
+  }
+  renderActiveTab();
+}
+
+function renderClassNameHeader() {
+  var h = document.getElementById('class-name-display');
+  if (h) { h.textContent = state.className; }
+}
+
+/* --- Roue : dessin + tirage --- */
+var wheelAngle = 0;
+var wheelSpinning = false;
+var WHEEL_COLORS = ['#E4000F', '#049CD8', '#FFC90E', '#3CB043', '#FF8C1A', '#9B5DE5', '#00C2D1', '#FF5CA8'];
+
+function currentWheelScope() {
+  var radios = document.getElementsByName('wheel-scope');
+  var i;
+  for (i = 0; i < radios.length; i++) { if (radios[i].checked) { return radios[i].value; } }
+  return 'eleves';
+}
+
+function drawWheelCanvas(canvasId) {
+  var canvas = document.getElementById(canvasId);
+  if (!canvas || !canvas.getContext) { return; }
+  var pool = wheelPool(currentWheelScope());
+  var ctx = canvas.getContext('2d');
+  var w = canvas.width, h = canvas.height;
+  var cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 6;
+  ctx.clearRect(0, 0, w, h);
+  if (pool.length === 0) {
+    ctx.fillStyle = '#999';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Aucun élément', cx, cy);
+    return;
+  }
+  var slice = (2 * Math.PI) / pool.length;
+  var i;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(wheelAngle);
+  for (i = 0; i < pool.length; i++) {
+    var start = i * slice, end = start + slice;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, r, start, end);
+    ctx.closePath();
+    ctx.fillStyle = WHEEL_COLORS[i % WHEEL_COLORS.length];
+    ctx.fill();
+    ctx.strokeStyle = '#FBF7EE';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.save();
+    ctx.rotate(start + slice / 2);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#FBF7EE';
+    ctx.font = 'bold 12px "Inter", sans-serif';
+    var label = pool[i].label;
+    if (label.length > 12) { label = label.slice(0, 11) + '…'; }
+    ctx.fillText(label, r - 10, 4);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function spinWheel() {
+  if (wheelSpinning) { return; }
+  var scope = currentWheelScope();
+  var pool = wheelPool(scope);
+  if (pool.length === 0) { return; }
+  wheelSpinning = true;
+  var winnerIdx = Math.floor(Math.random() * pool.length);
+  var slice = (2 * Math.PI) / pool.length;
+  var targetSliceCenter = winnerIdx * slice + slice / 2;
+  var extraTurns = 6 + Math.random() * 3;
+  var finalAngle = -targetSliceCenter - Math.PI / 2 + extraTurns * 2 * Math.PI;
+  var startAngle = wheelAngle;
+  var duration = 3200;
+  var startTime = null;
+  var winnerEl = document.getElementById('wheel-winner');
+  if (winnerEl) { winnerEl.textContent = ''; }
+
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+  function step(ts) {
+    if (!startTime) { startTime = ts; }
+    var progress = Math.min(1, (ts - startTime) / duration);
+    var eased = easeOutCubic(progress);
+    wheelAngle = startAngle + eased * (finalAngle - startAngle);
+    drawWheelCanvas('wheel-canvas');
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    } else {
+      wheelAngle = wheelAngle % (2 * Math.PI);
+      wheelSpinning = false;
+      var winner = pool[winnerIdx];
+      state.wheel.lastWinner = winner;
+      saveState();
+      if (winnerEl) { winnerEl.textContent = '🎉 ' + winner.label; }
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+/* --- Drag & drop plan de classe --- */
+var dragStudentId = null;
+
+function wireDragDrop(container) {
+  container.addEventListener('dragstart', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-drag-student]') : null;
+    if (!t) { return; }
+    dragStudentId = t.getAttribute('data-drag-student');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  container.addEventListener('dragover', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-drop-table]') : null;
+    if (t) { e.preventDefault(); }
+  });
+  container.addEventListener('drop', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-drop-table]') : null;
+    if (!t || !dragStudentId) { return; }
+    e.preventDefault();
+    var tableId = t.getAttribute('data-drop-table');
+    var seatIdx = parseInt(t.getAttribute('data-drop-seat'), 10);
+    placeStudentAtSeat(dragStudentId, tableId, seatIdx);
+    dragStudentId = null;
+    renderPlan();
+  });
+}
+
+/* --- Délégation d'événements globale --- */
+function handleClick(e) {
+  var target = e.target.closest ? e.target.closest('[data-action]') : null;
+  var tabBtn = e.target.closest ? e.target.closest('[data-tab]') : null;
+  var openFiche = e.target.closest ? e.target.closest('[data-open-fiche]') : null;
+
+  if (tabBtn) { switchTab(tabBtn.getAttribute('data-tab')); return; }
+  if (openFiche && !target) {
+    uiSelectedStudentId = openFiche.getAttribute('data-open-fiche');
+    switchTab('fiches');
+    return;
+  }
+  if (!target) { return; }
+  var action = target.getAttribute('data-action');
+  var id = target.getAttribute('data-id');
+
+  switch (action) {
+    case 'do-import':
+      var ta = document.getElementById('import-textarea');
+      if (ta && ta.value.replace(/\s/g, '').length > 0) {
+        var n = importStudentsFromText(ta.value);
+        renderEleves();
+      }
+      break;
+    case 'load-demo':
+      loadDemoClass();
+      renderActiveTab();
+      break;
+    case 'delete-student':
+      if (confirm('Retirer cet élève de la classe ?')) { deleteStudent(id); renderEleves(); }
+      break;
+    case 'select-fiche':
+      uiSelectedStudentId = id;
+      renderFiches();
+      break;
+    case 'add-point':
+      addPoint(id, target.getAttribute('data-cat'), parseInt(target.getAttribute('data-delta'), 10));
+      renderFiches();
+      break;
+    case 'toggle-stamp':
+      toggleStamp(id, target.getAttribute('data-stamp'));
+      renderFiches();
+      break;
+    case 'apply-action-student':
+      applyActionToStudent(id, target.getAttribute('data-action-id'));
+      renderFiches();
+      break;
+    case 'set-avatar':
+      setStudentAvatar(id, target.getAttribute('data-avatar'));
+      renderFiches();
+      break;
+    case 'toggle-absent':
+      var st = getStudent(id); if (st) { st.absent = !st.absent; saveState(); }
+      break;
+    case 'print-fiche':
+      printOnly('fiche-printable');
+      break;
+    case 'print-all-fiches':
+      printAllFiches();
+      break;
+    case 'add-house':
+      var hn = document.getElementById('new-house-name');
+      var hc = document.getElementById('new-house-color');
+      if (hn && hn.value.replace(/\s/g, '')) { addHouse(hn.value, hc ? hc.value : '#4A6FA5'); renderMaisons(); }
+      break;
+    case 'delete-house':
+      if (confirm('Supprimer cette maison ?')) { deleteHouse(id); renderMaisons(); }
+      break;
+    case 'house-bonus':
+      addHouseBonus(id, parseInt(target.getAttribute('data-delta'), 10));
+      renderMaisons();
+      break;
+    case 'apply-action-house':
+      var houseSelect = document.querySelector('[data-house-action-select="' + id + '"]');
+      if (houseSelect && houseSelect.value) { applyActionToHouse(id, houseSelect.value); renderMaisons(); }
+      break;
+    case 'add-action':
+      var alabel = document.getElementById('new-action-label');
+      var apoints = document.getElementById('new-action-points');
+      var atype = document.getElementById('new-action-type');
+      if (alabel && alabel.value.replace(/\s/g, '')) {
+        var pts = Math.abs(parseInt(apoints ? apoints.value : '1', 10)) || 1;
+        if (atype && atype.value === 'negatif') { pts = -pts; }
+        addCustomAction(alabel.value, pts);
+        renderReglages();
+      }
+      break;
+    case 'delete-action':
+      deleteAction(id);
+      renderReglages();
+      break;
+    case 'toggle-board':
+      toggleBoardPosition();
+      renderPlan();
+      break;
+    case 'add-table':
+      addTable(target.getAttribute('data-shape'));
+      renderPlan();
+      break;
+    case 'remove-table':
+      removeTable(id);
+      renderPlan();
+      break;
+    case 'move-table':
+      moveTable(id, parseInt(target.getAttribute('data-dir'), 10));
+      renderPlan();
+      break;
+    case 'smart-placement':
+      var warnings = smartPlacement();
+      renderPlan();
+      if (warnings.length > 0) { alert('Placement effectué avec quelques réserves :\n\n' + warnings.join('\n')); }
+      break;
+    case 'clear-seating':
+      if (confirm('Vider toutes les places du plan ?')) { clearSeating(); renderPlan(); }
+      break;
+    case 'print-plan':
+      printOnly('plan-printable');
+      break;
+    case 'toggle-premier-rang':
+      togglePremierRang(id);
+      renderPlan();
+      break;
+    case 'set-avs-for':
+      break; // handled on change event
+    case 'add-affinity':
+      var aa = document.getElementById('aff-a'), ab = document.getElementById('aff-b'), at = document.getElementById('aff-type');
+      if (aa && ab && aa.value && ab.value) { addAffinity(aa.value, ab.value, at.value); renderPlan(); }
+      break;
+    case 'remove-affinity':
+      removeAffinity(id);
+      renderPlan();
+      break;
+    case 'gen-groups-taille':
+      var gs = document.getElementById('grp-size');
+      generateRandomGroups('taille', gs ? parseInt(gs.value, 10) : 4);
+      renderGroupes();
+      drawWheelCanvas('wheel-canvas');
+      break;
+    case 'gen-groups-nb':
+      var gnb = document.getElementById('grp-nb');
+      generateRandomGroups('nombre', gnb ? parseInt(gnb.value, 10) : 5);
+      renderGroupes();
+      drawWheelCanvas('wheel-canvas');
+      break;
+    case 'gen-jigsaw':
+      var jnb = document.getElementById('jig-nb');
+      generateJigsawGroups(jnb ? parseInt(jnb.value, 10) : 5);
+      renderGroupes();
+      drawWheelCanvas('wheel-canvas');
+      break;
+    case 'spin-wheel':
+      spinWheel();
+      break;
+    case 'digitale-send':
+      copyForDigitale(target.getAttribute('data-scope'), target.getAttribute('data-tool'));
+      break;
+    case 'open-digitale':
+      window.open(DIGITALE_URLS[target.getAttribute('data-tool')], '_blank');
+      break;
+    case 'export-json':
+      exportJson();
+      break;
+    case 'add-stamp':
+      var sn = document.getElementById('new-stamp-name'), si = document.getElementById('new-stamp-icon');
+      if (sn && sn.value.replace(/\s/g, '')) { addCustomStamp(sn.value, si ? si.value : '🏅'); renderReglages(); }
+      break;
+    case 'reset-period':
+      if (confirm('Remettre à zéro les points (comportement, participation, bonus) de tous les élèves et de toutes les maisons pour une nouvelle période ?\n\nLes tampons, notes, maisons, le plan de classe et les groupes sont conservés. Cette action est irréversible.')) {
+        resetPeriod();
+        renderActiveTab();
+      }
+      break;
+    case 'reset-data':
+      if (confirm('Supprimer TOUTES les données de la classe ? Cette action est irréversible.')) { resetAllData(); renderActiveTab(); }
+      break;
+    case 'toggle-fullscreen':
+      var ec = document.getElementById('ecran-content');
+      if (ec) {
+        if (document.fullscreenElement) { document.exitFullscreen(); }
+        else if (ec.requestFullscreen) { ec.requestFullscreen(); }
+      }
+      break;
+    default: break;
+  }
+}
+
+function handleChange(e) {
+  var t = e.target;
+  if (t.matches && t.matches('[data-action="set-house"]')) {
+    setStudentHouse(t.getAttribute('data-id'), t.value);
+    renderMaisons();
+  } else if (t.matches && t.matches('[data-action="set-avs-for"]')) {
+    setAvsFor(t.getAttribute('data-id'), t.value);
+    renderPlan();
+  } else if (t.id === 'import-json-input') {
+    if (t.files && t.files[0]) {
+      importJsonFile(t.files[0], function (ok, err) {
+        if (ok) { renderActiveTab(); alert('Sauvegarde importée avec succès.'); }
+        else { alert(err); }
+      });
+    }
+  } else if (t.id === 'class-name-input') {
+    state.className = t.value || 'Ma classe';
+    saveState();
+    renderClassNameHeader();
+  } else if (t.name === 'wheel-scope') {
+    drawWheelCanvas('wheel-canvas');
+  } else if (t.id === 'chart-scope-select') {
+    var parts = t.value.split(':');
+    if (parts[0] === 'classe') { chartScope = 'classe'; chartTargetId = null; }
+    else { chartScope = parts[0]; chartTargetId = parts[1]; }
+    drawProgressChart();
+  }
+}
+
+function handleInput(e) {
+  var t = e.target;
+  if (t.matches && t.matches('[data-action="edit-notes"]')) {
+    var s = getStudent(t.getAttribute('data-id'));
+    if (s) { s.notes = t.value; saveState(); }
+  }
+}
+
+function initApp() {
+  loadState();
+  var app = document.getElementById('app');
+  app.addEventListener('click', handleClick);
+  app.addEventListener('change', handleChange);
+  app.addEventListener('input', handleInput);
+  wireDragDrop(app);
+  switchTab('eleves');
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
